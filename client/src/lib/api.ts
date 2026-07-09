@@ -1,6 +1,7 @@
 // REST + SSE client (§6).
 
 import type {
+  Cadence,
   Company,
   Contact,
   Match,
@@ -77,6 +78,20 @@ export async function draftOutreach(
     body: JSON.stringify({ channel, lang }),
   });
   if (!res.ok) throw new Error(`draft failed: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchCadence(
+  id: string,
+  lang: "en" | "fr" = "en",
+  matchId?: string
+): Promise<Cadence> {
+  const res = await fetch(`/api/companies/${id}/cadence`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lang, matchId }),
+  });
+  if (!res.ok) throw new Error(`cadence failed: ${res.status}`);
   return res.json();
 }
 

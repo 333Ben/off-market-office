@@ -107,6 +107,26 @@ export interface OutreachDraft {
   body: string;
 }
 
+export type CadenceChannel = "email" | "linkedin" | "phone";
+
+export interface CadenceStep {
+  channel: CadenceChannel;
+  day: number;
+  subject?: string;
+  body: string;
+  rationale?: string;
+}
+
+export interface Cadence {
+  id: string;
+  companyId: string;
+  matchId?: string;
+  lang: "en" | "fr";
+  subjectVariants: string[];
+  variantPick?: { choice: string; why: string };
+  steps: CadenceStep[];
+}
+
 export type AgentEventKind =
   | "signal"
   | "thinking"
