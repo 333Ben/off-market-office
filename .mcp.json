@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sillage": {
+      "type": "http",
+      "url": "https://api.getsillage.com/api/mcp/v2"
+    }
+  }
+}
