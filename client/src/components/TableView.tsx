@@ -7,23 +7,41 @@ import {
   ListPlus,
   TrendingUp,
   DoorOpen,
+  Building2,
+  ChevronDown,
 } from "lucide-react";
 import type { Company } from "../types";
-import { useStore, applyFilters } from "../store";
-import { enrichCompany, fetchCompany } from "../lib/api";
 import {
-  typeColor,
-  typeLabel,
-  heroStat,
-  releaseReasonLabel,
-} from "../lib/format";
+  useStore,
+  applyFilters,
+  type Tab,
+  type OfficeBucket,
+} from "../store";
+import { enrichCompany, fetchCompany } from "../lib/api";
+import { typeColor, heroStat, releaseReasonLabel } from "../lib/format";
+import AvailableOffices from "./AvailableOffices";
 
 type SortKey = "name" | "urgency" | "headcount" | "arr";
+
+const SIDE_TABS: { id: Tab; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "outgrower", label: "Buyers" },
+  { id: "releaser", label: "Sellers" },
+];
+const OFFICE_SIZES: OfficeBucket[] = ["<200", "200–500", "500–1000", "1000+"];
+const URGENCY_PRESETS: { label: string; value: number }[] = [
+  { label: "Any", value: 0 },
+  { label: "Warm ≥ 60", value: 60 },
+  { label: "Hot ≥ 80", value: 80 },
+];
 
 export default function TableView() {
   const companies = useStore((s) => s.companies);
   const tab = useStore((s) => s.tab);
+  const setTab = useStore((s) => s.setTab);
   const filters = useStore((s) => s.filters);
+  const setMinUrgency = useStore((s) => s.setMinUrgency);
+  const toggleOfficeSize = useStore((s) => s.toggleOfficeSize);
   const search = useStore((s) => s.search);
   const setSelected = useStore((s) => s.setSelected);
   const contactIds = useStore((s) => s.contactIds);
@@ -33,6 +51,7 @@ export default function TableView() {
 
   const [sortKey, setSortKey] = useState<SortKey>("urgency");
   const [asc, setAsc] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const rows = useMemo(() => {
     const filtered = applyFilters(companies, tab, filters, search);
@@ -95,6 +114,72 @@ export default function TableView() {
         </div>
       </div>
 
+      {/* Filter bar — refine before building a list */}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2 border-b border-border bg-card px-5 py-2.5">
+        {/* Side */}
+        <FilterGroup label="Side">
+          <div className="flex items-center gap-1 rounded-chip bg-page p-0.5">
+            {SIDE_TABS.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`rounded-[7px] px-2.5 py-1 text-xs font-600 transition ${
+                  tab === t.id
+                    ? "bg-card text-ink shadow-sm"
+                    : "text-secondary hover:text-ink"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </FilterGroup>
+
+        {/* Office size */}
+        <FilterGroup label="Office m²">
+          <div className="flex flex-wrap items-center gap-1">
+            {OFFICE_SIZES.map((s) => {
+              const on = filters.officeSizes.includes(s);
+              return (
+                <button
+                  key={s}
+                  onClick={() => toggleOfficeSize(s)}
+                  className={`rounded-chip border px-2 py-1 text-xs font-600 transition ${
+                    on
+                      ? "border-transparent bg-violet text-white"
+                      : "border-border text-secondary hover:text-ink"
+                  }`}
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+        </FilterGroup>
+
+        {/* Emergency / urgency */}
+        <FilterGroup label="Emergency">
+          <div className="flex items-center gap-1">
+            {URGENCY_PRESETS.map((p) => {
+              const on = filters.minUrgency === p.value;
+              return (
+                <button
+                  key={p.label}
+                  onClick={() => setMinUrgency(p.value)}
+                  className={`rounded-chip border px-2 py-1 text-xs font-600 transition ${
+                    on
+                      ? "border-transparent bg-coral text-white"
+                      : "border-border text-secondary hover:text-ink"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+        </FilterGroup>
+      </div>
+
       {/* Table */}
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full border-collapse text-sm">
@@ -133,8 +218,12 @@ export default function TableView() {
                 key={c.id}
                 company={c}
                 inList={contactIds.includes(c.id)}
+                expanded={expandedId === c.id}
                 onToggle={() => toggleContact(c.id)}
                 onOpen={() => setSelected(c.id)}
+                onExpand={() =>
+                  setExpandedId((prev) => (prev === c.id ? null : c.id))
+                }
               />
             ))}
           </tbody>
@@ -176,16 +265,37 @@ function Th({
   );
 }
 
+function FilterGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[11px] font-600 uppercase tracking-wide text-muted">
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
+
 function Row({
   company,
   inList,
+  expanded,
   onToggle,
   onOpen,
+  onExpand,
 }: {
   company: Company;
   inList: boolean;
+  expanded: boolean;
   onToggle: () => void;
   onOpen: () => void;
+  onExpand: () => void;
 }) {
   const upsertCompany = useStore((s) => s.upsertCompany);
   const [enriching, setEnriching] = useState(false);
@@ -206,9 +316,10 @@ function Row({
   };
 
   return (
+    <>
     <tr
       className={`border-b border-border transition hover:bg-card ${
-        inList ? "bg-violet-tint/40" : ""
+        inList ? "bg-violet-tint/40" : expanded ? "bg-card" : ""
       }`}
     >
       <td className="px-4 py-2.5 align-middle">
@@ -310,19 +421,49 @@ function Row({
         )}
       </td>
 
-      <td className="px-4 py-2.5 align-middle text-right">
-        <button
-          onClick={onToggle}
-          title={inList ? "Remove from contact list" : "Add to contact list"}
-          className={`grid h-7 w-7 place-items-center rounded-chip border transition ${
-            inList
-              ? "border-violet bg-violet text-white"
-              : "border-border text-muted hover:text-violet"
-          }`}
-        >
-          {inList ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-        </button>
+      <td className="px-4 py-2.5 align-middle">
+        <div className="flex items-center justify-end gap-1.5">
+          {isBuyer && (
+            <button
+              onClick={onExpand}
+              title="Show available offices"
+              aria-expanded={expanded}
+              className={`flex h-7 items-center gap-1 rounded-chip border px-2 text-xs font-600 transition ${
+                expanded
+                  ? "border-coral bg-coral-tint text-coral"
+                  : "border-border text-muted hover:text-coral"
+              }`}
+            >
+              <Building2 className="h-3.5 w-3.5" />
+              <ChevronDown
+                className={`h-3 w-3 transition-transform ${
+                  expanded ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          )}
+          <button
+            onClick={onToggle}
+            title={inList ? "Remove from contact list" : "Add to contact list"}
+            className={`grid h-7 w-7 place-items-center rounded-chip border transition ${
+              inList
+                ? "border-violet bg-violet text-white"
+                : "border-border text-muted hover:text-violet"
+            }`}
+          >
+            {inList ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          </button>
+        </div>
       </td>
     </tr>
+    {expanded && isBuyer && (
+      <tr className="border-b border-border bg-page/60">
+        <td />
+        <td colSpan={8} className="px-4 pb-3 pt-1">
+          <AvailableOffices buyer={company} />
+        </td>
+      </tr>
+    )}
+    </>
   );
 }

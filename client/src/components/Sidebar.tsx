@@ -9,10 +9,16 @@ import {
   FileWarning,
   Building2,
 } from "lucide-react";
-import { useStore, typeCounts, type TeamBucket } from "../store";
+import {
+  useStore,
+  typeCounts,
+  type TeamBucket,
+  type OfficeBucket,
+} from "../store";
 import type { SignalType } from "../types";
 
 const TEAM_SIZES: TeamBucket[] = ["1–10", "11–50", "51–200", "200+"];
+const OFFICE_SIZES: OfficeBucket[] = ["<200", "200–500", "500–1000", "1000+"];
 const SIGNALS: { label: string; type: SignalType; icon: typeof Flame }[] = [
   { label: "Hiring surge", type: "hiring_surge", icon: Flame },
   { label: "New exec", type: "exec_hire", icon: UserPlus },
@@ -31,6 +37,7 @@ export default function Sidebar() {
   const filters = useStore((s) => s.filters);
   const setMinUrgency = useStore((s) => s.setMinUrgency);
   const toggleTeamSize = useStore((s) => s.toggleTeamSize);
+  const toggleOfficeSize = useStore((s) => s.toggleOfficeSize);
   const toggleSignal = useStore((s) => s.toggleSignal);
   const toggleArr = useStore((s) => s.toggleArr);
   const resetFilters = useStore((s) => s.resetFilters);
@@ -89,6 +96,21 @@ export default function Sidebar() {
               key={s}
               active={filters.teamSizes.includes(s)}
               onClick={() => toggleTeamSize(s)}
+            >
+              {s}
+            </Chip>
+          ))}
+        </div>
+      </Group>
+
+      {/* Office size (m²) — space on offer for sellers, footprint for buyers */}
+      <Group title="Office size · m²">
+        <div className="flex flex-wrap gap-2">
+          {OFFICE_SIZES.map((s) => (
+            <Chip
+              key={s}
+              active={filters.officeSizes.includes(s)}
+              onClick={() => toggleOfficeSize(s)}
             >
               {s}
             </Chip>
