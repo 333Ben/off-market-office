@@ -1,0 +1,99 @@
+/* Design tokens (§12). Light / violet / coral real-estate aesthetic. */
+
+:root {
+  --page: #f6f6f8;
+  --card: #ffffff;
+  --border: #ececf1;
+
+  --ink: #17171f;
+  --secondary: #6b7280;
+  --muted: #9ca3af;
+
+  --violet: #7c5cfc;
+  --violet-hover: #6a4bef;
+  --violet-tint: #f1edff;
+
+  --coral: #ff6b5e;
+  --coral-tint: #ffefed;
+
+  --success: #22c55e;
+  --warning: #f59e0b;
+
+  --radius-card: 16px;
+  --radius-panel: 20px;
+  --radius-chip: 10px;
+
+  --shadow-soft: 0 8px 24px rgba(23, 23, 31, 0.08);
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pin animations. Disabled under reduced-motion (§12 quality floor). */
+@keyframes pin-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(124, 92, 252, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(124, 92, 252, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(124, 92, 252, 0);
+  }
+}
+@keyframes pin-pulse-coral {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 94, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(255, 107, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 94, 0);
+  }
+}
+
+.pin-pulse-violet {
+  animation: pin-pulse 2.4s ease-out infinite;
+}
+.pin-pulse-coral {
+  animation: pin-pulse-coral 2.4s ease-out infinite;
+}
+
+/* New-signal burst: 3 quick pulses (§12). */
+.pin-quick-violet {
+  animation: pin-pulse 0.6s ease-out 3;
+}
+.pin-quick-coral {
+  animation: pin-pulse-coral 0.6s ease-out 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pin-pulse-violet,
+  .pin-pulse-coral,
+  .pin-quick-violet,
+  .pin-quick-coral {
+    animation: none !important;
+  }
+}
+
+/* Agent console line fade-in. */
+@keyframes console-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.console-line {
+  animation: console-line-in 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .console-line {
+    animation: none;
+  }
+}
