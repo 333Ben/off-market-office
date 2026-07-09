@@ -8,10 +8,15 @@ import {
   Copy,
   Sparkles,
   Send,
+  Save,
+  FolderOpen,
+  Building2,
+  ChevronDown,
 } from "lucide-react";
 import { useStore } from "../store";
 import { enrichCompany, fetchCompany } from "../lib/api";
-import { typeColor, heroStat } from "../lib/format";
+import { typeColor, heroStat, formatDate } from "../lib/format";
+import AvailableOffices from "./AvailableOffices";
 
 // Outreach queue — the broker builds a list of companies to contact, enriches
 // any that are missing a decision-maker, then copies the emails to work from.
@@ -25,9 +30,16 @@ export default function ContactList() {
   const upsertCompany = useStore((s) => s.upsertCompany);
   const setSelected = useStore((s) => s.setSelected);
   const showToast = useStore((s) => s.showToast);
+  const savedLists = useStore((s) => s.savedLists);
+  const saveList = useStore((s) => s.saveList);
+  const loadSavedList = useStore((s) => s.loadSavedList);
+  const deleteSavedList = useStore((s) => s.deleteSavedList);
 
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
+  const [listName, setListName] = useState("");
+  const [showSaved, setShowSaved] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const queued = useMemo(
     () =>
@@ -77,6 +89,14 @@ export default function ContactList() {
     } catch {
       /* clipboard unavailable */
     }
+  };
+
+  const onSave = () => {
+    const name = listName.trim();
+    if (!name || queued.length === 0) return;
+    saveList(name);
+    setListName("");
+    showToast(`Saved “${name}” · ${queued.length} companies`);
   };
 
   if (!open) return null;
@@ -148,6 +168,79 @@ export default function ContactList() {
             >
               <Trash2 className="h-3.5 w-3.5" /> Clear
             </button>
+          </div>
+        )}
+
+        {/* Save the current list */}
+        {queued.length > 0 && (
+          <div className="flex items-center gap-2 border-b border-border px-5 py-2.5">
+            <input
+              value={listName}
+              onChange={(e) => setListName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && onSave()}
+              placeholder="Name this list…"
+              className="min-w-0 flex-1 rounded-chip border border-border bg-page px-3 py-1.5 text-sm text-ink placeholder:text-muted focus:border-violet focus:bg-card"
+            />
+            <button
+              onClick={onSave}
+              disabled={!listName.trim()}
+              className="flex shrink-0 items-center gap-1.5 rounded-chip bg-violet px-3 py-1.5 text-xs font-600 text-white hover:bg-violet-hover disabled:opacity-40"
+            >
+              <Save className="h-3.5 w-3.5" /> Save
+            </button>
+          </div>
+        )}
+
+        {/* Saved lists */}
+        {savedLists.length > 0 && (
+          <div className="border-b border-border px-5 py-2">
+            <button
+              onClick={() => setShowSaved((v) => !v)}
+              className="flex w-full items-center gap-2 text-xs font-600 text-secondary hover:text-ink"
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+              Saved lists
+              <span className="tnum rounded-full bg-page px-1.5 text-[11px] text-muted">
+                {savedLists.length}
+              </span>
+              <ChevronDown
+                className={`ml-auto h-3.5 w-3.5 transition-transform ${
+                  showSaved ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {showSaved && (
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {savedLists.map((l) => (
+                  <li
+                    key={l.id}
+                    className="flex items-center gap-2 rounded-chip border border-border bg-card px-3 py-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-600 text-ink">
+                        {l.name}
+                      </div>
+                      <div className="tnum text-[11px] text-muted">
+                        {l.companyIds.length} companies · {formatDate(l.createdAt)}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => loadSavedList(l.id)}
+                      className="shrink-0 rounded-chip border border-border px-2.5 py-1 text-xs font-600 text-violet hover:bg-violet-tint"
+                    >
+                      Load
+                    </button>
+                    <button
+                      onClick={() => deleteSavedList(l.id)}
+                      title="Delete list"
+                      className="shrink-0 text-muted hover:text-coral"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
@@ -228,6 +321,32 @@ export default function ContactList() {
                         </button>
                       )}
                     </div>
+
+                    {/* Available offices — only for buyers */}
+                    {c.type === "outgrower" && (
+                      <div className="mt-2.5 border-t border-border pt-2.5">
+                        <button
+                          onClick={() =>
+                            setExpandedId((prev) => (prev === c.id ? null : c.id))
+                          }
+                          aria-expanded={expandedId === c.id}
+                          className="flex w-full items-center gap-1.5 text-xs font-600 text-secondary hover:text-ink"
+                        >
+                          <Building2 className="h-3.5 w-3.5 text-coral" />
+                          Available offices
+                          <ChevronDown
+                            className={`ml-auto h-3.5 w-3.5 transition-transform ${
+                              expandedId === c.id ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+                        {expandedId === c.id && (
+                          <div className="mt-2">
+                            <AvailableOffices buyer={c} limit={3} />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}
