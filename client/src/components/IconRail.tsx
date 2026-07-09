@@ -1,6 +1,7 @@
 import { Map as MapIcon, Table2, Send, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useStore, type View } from "../store";
+import LogoMark from "./Logo";
 
 // Slim navigation rail (visual chrome matching the reference). Map and Table
 // switch the main view; the contact-list button opens the outreach drawer.
@@ -19,13 +20,10 @@ export default function IconRail() {
     <nav className="flex w-14 shrink-0 flex-col items-center gap-2 border-r border-border bg-card py-4">
       {/* App mark */}
       <div
-        className="mb-3 grid h-9 w-9 place-items-center rounded-[12px]"
-        style={{
-          background: "linear-gradient(135deg, var(--violet), var(--coral))",
-        }}
-        title="Outgrow"
+        className="mb-3 grid h-9 w-9 place-items-center"
+        title="OMO — Off Market Office"
       >
-        <span className="h-3 w-3 rotate-45 rounded-[2px] bg-white/90" />
+        <LogoMark size={32} />
       </div>
 
       {VIEW_ITEMS.map(({ icon: Icon, label, view: v }) => (

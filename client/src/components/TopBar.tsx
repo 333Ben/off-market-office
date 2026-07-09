@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Search, Bell, Volume2, VolumeX, Radio } from "lucide-react";
 import { useStore, type Tab } from "../store";
 import { typeColor, typeLabel } from "../lib/format";
+import LogoMark from "./Logo";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "all", label: "All" },
@@ -38,15 +39,15 @@ export default function TopBar() {
 
   return (
     <header className="relative z-[1100] flex h-16 shrink-0 items-center gap-6 border-b border-border bg-card px-5">
-      {/* Wordmark */}
-      <div className="flex items-center gap-2">
-        <span
-          className="h-6 w-6 rotate-45 rounded-[6px]"
-          style={{
-            background: "linear-gradient(135deg, var(--violet), var(--coral))",
-          }}
-        />
-        <span className="text-lg font-700 tracking-tight text-ink">Outgrow</span>
+      {/* Wordmark — OMO, Off Market Office */}
+      <div className="flex items-center gap-2.5">
+        <LogoMark size={30} />
+        <div className="leading-none">
+          <div className="text-base font-700 tracking-wide text-ink">OMO</div>
+          <div className="mt-0.5 text-[9px] font-500 tracking-[0.16em] text-muted">
+            OFF MARKET OFFICE
+          </div>
+        </div>
       </div>
 
       {/* Text tabs */}

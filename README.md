@@ -1,4 +1,4 @@
-# Outgrow
+# OMO — Off Market Office
 
 **Turns hiring data into square meters.** An AI agent for Paris commercial real-estate brokers that detects companies about to *outgrow* their office (demand) and companies about to *release* office (supply), matches the two live on a map, and drafts the outreach for both sides — before either company has called a broker.
 
