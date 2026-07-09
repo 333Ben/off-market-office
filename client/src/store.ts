@@ -15,10 +15,13 @@ export interface ActiveMatch {
 
 export type Tab = "all" | "outgrower" | "releaser";
 export type TeamBucket = "1–10" | "11–50" | "51–200" | "200+";
+export type OfficeBucket = "<200" | "200–500" | "500–1000" | "1000+";
+export type View = "map" | "table";
 
 export interface Filters {
   minUrgency: number;
   teamSizes: TeamBucket[];
+  officeSizes: OfficeBucket[];
   signalTypes: SignalType[];
   arrondissements: number[];
 }
@@ -26,18 +29,60 @@ export interface Filters {
 export const DEFAULT_FILTERS: Filters = {
   minUrgency: 40,
   teamSizes: [],
+  officeSizes: [],
   signalTypes: [],
   arrondissements: [],
 };
+
+// A named, saved outreach list — persisted to localStorage so it survives reloads.
+export interface SavedList {
+  id: string;
+  name: string;
+  companyIds: string[];
+  createdAt: string;
+}
+
+const SAVED_LISTS_KEY = "outgrow.savedLists";
+
+function readSavedLists(): SavedList[] {
+  try {
+    const raw = localStorage.getItem(SAVED_LISTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistSavedLists(lists: SavedList[]): void {
+  try {
+    localStorage.setItem(SAVED_LISTS_KEY, JSON.stringify(lists));
+  } catch {
+    /* storage unavailable — lists stay in-memory for the session */
+  }
+}
+
+function newId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `list-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+}
 
 interface StoreState {
   companies: Company[];
   loading: boolean;
   error: string | null;
   tab: Tab;
+  view: View;
   search: string;
   filters: Filters;
   selectedId: string | null;
+
+  // outreach list — companies the broker has queued to contact
+  contactIds: string[];
+  contactListOpen: boolean;
+  savedLists: SavedList[];
 
   // agent stream state
   events: AgentEvent[];
@@ -51,11 +96,23 @@ interface StoreState {
 
   load: () => Promise<void>;
   setTab: (tab: Tab) => void;
+  setView: (view: View) => void;
   setSearch: (q: string) => void;
   setSelected: (id: string | null) => void;
 
+  toggleContact: (id: string) => void;
+  addContacts: (ids: string[]) => void;
+  removeContact: (id: string) => void;
+  clearContacts: () => void;
+  setContactListOpen: (open: boolean) => void;
+
+  saveList: (name: string) => void;
+  loadSavedList: (id: string) => void;
+  deleteSavedList: (id: string) => void;
+
   setMinUrgency: (v: number) => void;
   toggleTeamSize: (b: TeamBucket) => void;
+  toggleOfficeSize: (b: OfficeBucket) => void;
   toggleSignal: (s: SignalType) => void;
   toggleArr: (a: number) => void;
   resetFilters: () => void;
@@ -76,9 +133,13 @@ export const useStore = create<StoreState>((set) => ({
   loading: false,
   error: null,
   tab: "all",
+  view: "map",
   search: "",
   filters: DEFAULT_FILTERS,
   selectedId: null,
+  contactIds: [],
+  contactListOpen: false,
+  savedLists: readSavedLists(),
   events: [],
   pulsingIds: [],
   consoleOpen: true,
@@ -99,8 +160,55 @@ export const useStore = create<StoreState>((set) => ({
   },
 
   setTab: (tab) => set({ tab }),
+  setView: (view) => set({ view }),
   setSearch: (search) => set({ search }),
   setSelected: (selectedId) => set({ selectedId }),
+
+  toggleContact: (id) =>
+    set((s) => ({
+      contactIds: s.contactIds.includes(id)
+        ? s.contactIds.filter((x) => x !== id)
+        : [...s.contactIds, id],
+    })),
+  addContacts: (ids) =>
+    set((s) => ({
+      contactIds: [...s.contactIds, ...ids.filter((id) => !s.contactIds.includes(id))],
+    })),
+  removeContact: (id) =>
+    set((s) => ({ contactIds: s.contactIds.filter((x) => x !== id) })),
+  clearContacts: () => set({ contactIds: [] }),
+  setContactListOpen: (contactListOpen) => set({ contactListOpen }),
+
+  saveList: (name) =>
+    set((s) => {
+      const trimmed = name.trim();
+      if (!trimmed || s.contactIds.length === 0) return s;
+      const list: SavedList = {
+        id: newId(),
+        name: trimmed,
+        companyIds: [...s.contactIds],
+        createdAt: new Date().toISOString(),
+      };
+      const savedLists = [list, ...s.savedLists];
+      persistSavedLists(savedLists);
+      return { savedLists };
+    }),
+  loadSavedList: (id) =>
+    set((s) => {
+      const list = s.savedLists.find((l) => l.id === id);
+      if (!list) return s;
+      // Only load ids that still exist in the current dataset.
+      const valid = list.companyIds.filter((cid) =>
+        s.companies.some((c) => c.id === cid)
+      );
+      return { contactIds: valid, contactListOpen: true };
+    }),
+  deleteSavedList: (id) =>
+    set((s) => {
+      const savedLists = s.savedLists.filter((l) => l.id !== id);
+      persistSavedLists(savedLists);
+      return { savedLists };
+    }),
 
   setMinUrgency: (v) =>
     set((s) => ({ filters: { ...s.filters, minUrgency: v } })),
@@ -111,6 +219,15 @@ export const useStore = create<StoreState>((set) => ({
         teamSizes: s.filters.teamSizes.includes(b)
           ? s.filters.teamSizes.filter((x) => x !== b)
           : [...s.filters.teamSizes, b],
+      },
+    })),
+  toggleOfficeSize: (b) =>
+    set((s) => ({
+      filters: {
+        ...s.filters,
+        officeSizes: s.filters.officeSizes.includes(b)
+          ? s.filters.officeSizes.filter((x) => x !== b)
+          : [...s.filters.officeSizes, b],
       },
     })),
   toggleSignal: (sig) =>
@@ -274,6 +391,28 @@ function inBucket(headcount: number, buckets: TeamBucket[]): boolean {
   });
 }
 
+// The m² that matters per side: for sellers it's the space on offer, for
+// buyers it's their current office footprint.
+export function relevantSqm(c: Company): number {
+  return c.type === "releaser" ? c.availableSqm ?? c.officeSqm : c.officeSqm;
+}
+
+function inOfficeBucket(sqm: number, buckets: OfficeBucket[]): boolean {
+  if (buckets.length === 0) return true;
+  return buckets.some((b) => {
+    switch (b) {
+      case "<200":
+        return sqm < 200;
+      case "200–500":
+        return sqm >= 200 && sqm < 500;
+      case "500–1000":
+        return sqm >= 500 && sqm < 1000;
+      case "1000+":
+        return sqm >= 1000;
+    }
+  });
+}
+
 export function applyFilters(
   companies: Company[],
   tab: Tab,
@@ -285,6 +424,7 @@ export function applyFilters(
     if (tab !== "all" && c.type !== tab) return false;
     if (c.urgencyScore < filters.minUrgency) return false;
     if (!inBucket(c.headcount, filters.teamSizes)) return false;
+    if (!inOfficeBucket(relevantSqm(c), filters.officeSizes)) return false;
     if (
       filters.arrondissements.length > 0 &&
       !filters.arrondissements.includes(c.arrondissement)
