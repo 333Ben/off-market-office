@@ -63,6 +63,12 @@ Everything in the hero sequence is deterministic and works offline on the synthe
 
 ---
 
+## Live integrations (Phase 5)
+
+- **BODACC live feed** — click the 🔔 bell (top bar) to open **real** recent Paris insolvency filings (*procédures collectives*) from France's official BODACC open-data API. No key needed. Clearly labeled "LIVE · real data" and kept separate from the synthetic demo set. If offline, it fails gracefully and the demo is unaffected.
+- **French outreach** — the outreach modal has an **EN / FR** toggle; switching regenerates the draft in that language (`POST /api/companies/:id/draft {channel, lang}`).
+- **Real FullEnrich** (optional, off by default) — a full adapter for the documented FullEnrich v2 waterfall (`POST /contact/enrich/bulk` → poll `GET /contact/enrich/bulk/{id}`). Enable with `PROVIDERS=fullenrich` **and** `FULLENRICH_API_KEY` in `.env`. Because it enriches a *known* person, set a consented contact on the company first (hackathon rule: only enrich contacts you have consent for). Any failure falls back to the mock, so the flow never breaks.
+
 ## Architecture
 
 ```

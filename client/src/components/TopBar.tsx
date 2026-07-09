@@ -18,6 +18,7 @@ export default function TopBar() {
   const companies = useStore((s) => s.companies);
   const soundOn = useStore((s) => s.soundOn);
   const toggleSound = useStore((s) => s.toggleSound);
+  const toggleBodacc = useStore((s) => s.toggleBodacc);
   const [focused, setFocused] = useState(false);
 
   const results = useMemo(() => {
@@ -38,7 +39,12 @@ export default function TopBar() {
     <header className="relative z-[1100] flex h-16 shrink-0 items-center gap-6 border-b border-border bg-card px-5">
       {/* Wordmark */}
       <div className="flex items-center gap-2">
-        <span className="grid h-6 w-6 rotate-45 place-items-center rounded-[4px] bg-violet" />
+        <span
+          className="h-6 w-6 rotate-45 rounded-[6px]"
+          style={{
+            background: "linear-gradient(135deg, var(--violet), var(--coral))",
+          }}
+        />
         <span className="text-lg font-700 tracking-tight text-ink">Outgrow</span>
       </div>
 
@@ -116,12 +122,14 @@ export default function TopBar() {
         {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
       </button>
 
-      {/* Signal feed bell */}
+      {/* Live BODACC feed */}
       <button
+        onClick={toggleBodacc}
         className="relative grid h-9 w-9 place-items-center rounded-chip border border-border bg-card text-secondary hover:text-ink"
-        title="Signal feed"
+        title="Live BODACC insolvency feed (real data)"
       >
         <Bell className="h-4 w-4" />
+        <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-success ring-2 ring-card" />
       </button>
 
       <span className="h-8 w-8 rounded-full bg-violet-tint ring-1 ring-border" />

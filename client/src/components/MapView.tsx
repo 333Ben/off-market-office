@@ -91,8 +91,8 @@ export default function MapView() {
       </MapContainer>
       <Toast />
 
-      {/* Result count + synthetic-data note */}
-      <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] flex items-center gap-2">
+      {/* Result count + synthetic-data note (bottom-right, clear of the agent popup) */}
+      <div className="pointer-events-none absolute bottom-3 right-3 z-[1000] flex items-center gap-2">
         <span className="rounded-chip bg-card/90 px-2.5 py-1 text-xs font-600 text-ink shadow-soft backdrop-blur tnum">
           {companies.length} shown
         </span>

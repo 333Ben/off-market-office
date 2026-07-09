@@ -2,8 +2,8 @@
 
 import type { Company } from "../types";
 
-export const VIOLET = "#7C5CFC";
-export const CORAL = "#FF6B5E";
+export const VIOLET = "#4F46E5";
+export const CORAL = "#FF5A5F";
 
 export function typeColor(c: Company): string {
   return c.type === "outgrower" ? VIOLET : CORAL;

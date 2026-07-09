@@ -30,8 +30,9 @@ import {
 import { deskCapacity, monthsToBreach, neededSqm } from "./spacemath";
 import { rankCandidates, computeFit, type Fit } from "./matcher";
 import { MockEnrichmentProvider } from "./providers/enrichment/mock";
+import { getEnrichmentProvider } from "./providers/enrichment/index";
 
-const enrichment = new MockEnrichmentProvider();
+const mockEnrichment = new MockEnrichmentProvider();
 let matchSeq = 0;
 let draftSeq = 0;
 
@@ -160,16 +161,25 @@ function maskPhone(phone?: string): string {
   return phone.replace(/\d(?=\d{2}\b)/g, "•");
 }
 
-/** Step 4 — enrichment via FullEnrich adapter (mock by default). */
+/** Step 4 — enrichment via the EnrichmentProvider adapter (mock by default;
+ *  real FullEnrich when PROVIDERS=fullenrich + key). Real failures fall back to
+ *  mock so the flow never breaks. */
 export async function enrichCompany(c: Company): Promise<Contact> {
   const target =
     c.type === "outgrower" ? "Head of Workplace" : "CFO / Office Manager";
+  const { provider, real } = getEnrichmentProvider();
   emit(
     "tool_call",
-    `FullEnrich: waterfall lookup for ${target} @ ${c.name}`,
+    `FullEnrich${real ? "" : " (mock)"}: waterfall lookup for ${target} @ ${c.name}`,
     c.id
   );
-  const contact = await enrichment.enrich(c);
+  let contact: Contact;
+  try {
+    contact = await provider.enrich(c);
+  } catch (e) {
+    if (real) emit("error", `FullEnrich failed (${(e as Error).message}) — using mock`, c.id);
+    contact = await mockEnrichment.enrich(c);
+  }
   c.contact = contact;
   if (c.status === "new" || c.status === "scored") c.status = "enriched";
   saveDb();
@@ -241,8 +251,13 @@ export async function matchCompany(c: Company): Promise<Match | null> {
 export async function draftCompany(
   c: Company,
   channel: "email" | "phone_script",
-  matchId?: string
+  matchId?: string,
+  lang: "en" | "fr" = "en"
 ): Promise<OutreachDraft> {
+  const langNote =
+    lang === "fr"
+      ? "\n\nWrite the entire output in natural French (fr-FR)."
+      : "";
   const facts =
     c.type === "outgrower"
       ? `${c.name}, ${c.industry}, ${c.arrondissement}e. Headcount ${c.headcount}, ${c.openRoles} open roles, hiring ${c.hiresPerMonth}/mo. Breach in ${c.monthsToBreach ?? 0} months, needs ~${c.neededSqm} m². Contact: ${c.contact?.fullName ?? "the decision-maker"} (${c.contact?.role ?? "Head of Workplace"}).`
@@ -252,12 +267,18 @@ export async function draftCompany(
   let body: string;
 
   if (channel === "email") {
-    subject = `Space that grows with ${c.name}`;
-    body = `Hi ${c.contact?.fullName?.split(" ")[0] ?? "there"},\n\nCongratulations on the momentum at ${c.name}. With ${c.openRoles} roles open and roughly ${c.monthsToBreach ?? 0} months before your ${c.arrondissement}e office runs out of desks, it may be worth lining up ~${c.neededSqm} m² now. I have a strong option nearby.\n\nOpen to a quick call this week?\n\n[Your name]`;
+    subject =
+      lang === "fr"
+        ? `Des bureaux qui grandissent avec ${c.name}`
+        : `Space that grows with ${c.name}`;
+    body =
+      lang === "fr"
+        ? `Bonjour ${c.contact?.fullName?.split(" ")[0] ?? ""},\n\nFélicitations pour la dynamique chez ${c.name}. Avec ${c.openRoles} postes ouverts et environ ${c.monthsToBreach ?? 0} mois avant que vos bureaux du ${c.arrondissement}e n'atteignent leur capacité, il serait utile d'anticiper ~${c.neededSqm} m². J'ai une belle option à proximité.\n\nDisponible pour un court échange cette semaine ?\n\n[Your name]`
+        : `Hi ${c.contact?.fullName?.split(" ")[0] ?? "there"},\n\nCongratulations on the momentum at ${c.name}. With ${c.openRoles} roles open and roughly ${c.monthsToBreach ?? 0} months before your ${c.arrondissement}e office runs out of desks, it may be worth lining up ~${c.neededSqm} m² now. I have a strong option nearby.\n\nOpen to a quick call this week?\n\n[Your name]`;
     if (hasLLM()) {
       try {
         const r = await jsonCall<{ subject: string; body: string }>(
-          OUTREACH_EMAIL_SYSTEM,
+          OUTREACH_EMAIL_SYSTEM + langNote,
           facts,
           0.7,
           700
@@ -269,10 +290,13 @@ export async function draftCompany(
       }
     }
   } else {
-    body = `Hi, this is [Your name] — a Paris office broker.\nI saw ${c.name} is freeing up around ${c.availableSqm} m².\nI work with growing teams looking for exactly that space.\nCould help you place it quickly and quietly.\nIs now a bad time for two minutes?`;
+    body =
+      lang === "fr"
+        ? `Bonjour, ${"[Your name]"} — courtier en bureaux à Paris.\nJ'ai vu que ${c.name} libère environ ${c.availableSqm} m².\nJe travaille avec des équipes en croissance qui cherchent exactement cet espace.\nJe peux vous aider à le placer vite et en toute discrétion.\nEst-ce un mauvais moment pour deux minutes ?`
+        : `Hi, this is [Your name] — a Paris office broker.\nI saw ${c.name} is freeing up around ${c.availableSqm} m².\nI work with growing teams looking for exactly that space.\nCould help you place it quickly and quietly.\nIs now a bad time for two minutes?`;
     if (hasLLM()) {
       try {
-        const r = await textCall(OUTREACH_PHONE_SYSTEM, facts, 0.7, 400);
+        const r = await textCall(OUTREACH_PHONE_SYSTEM + langNote, facts, 0.7, 400);
         // Phone system returns JSON {body}; parse defensively.
         try {
           const parsed = JSON.parse(

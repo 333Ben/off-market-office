@@ -4,22 +4,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        page: "#F6F6F8",
+        page: "#EEF0F7",
         card: "#FFFFFF",
-        border: "#ECECF1",
-        ink: "#17171F",
-        secondary: "#6B7280",
-        muted: "#9CA3AF",
+        border: "#E5E8F2",
+        ink: "#14162E",
+        secondary: "#565D78",
+        muted: "#949BB4",
         violet: {
-          DEFAULT: "#7C5CFC",
-          hover: "#6A4BEF",
-          tint: "#F1EDFF",
+          DEFAULT: "#4F46E5",
+          hover: "#4338CA",
+          tint: "#ECEDFE",
         },
         coral: {
-          DEFAULT: "#FF6B5E",
-          tint: "#FFEFED",
+          DEFAULT: "#FF5A5F",
+          tint: "#FFECED",
         },
-        success: "#22C55E",
+        success: "#16A34A",
         warning: "#F59E0B",
       },
       fontFamily: {
@@ -37,7 +37,8 @@ export default {
         chip: "10px",
       },
       boxShadow: {
-        soft: "0 8px 24px rgba(23,23,31,0.08)",
+        soft: "0 10px 30px rgba(20,22,46,0.10)",
+        pop: "0 16px 40px rgba(20,22,46,0.16)",
       },
     },
   },

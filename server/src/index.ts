@@ -25,6 +25,7 @@ import {
   draftCompany,
 } from "./pipeline";
 import { rankCandidates } from "./matcher";
+import { fetchBodaccParis } from "./providers/signals/bodacc";
 import type { Signal } from "./types";
 
 const PORT = Number(process.env.PORT) || 3001;
@@ -98,11 +99,23 @@ app.post("/api/companies/:id/draft", async (req, res) => {
   if (!company) return res.status(404).json({ error: "not found" });
   const channel =
     req.body?.channel === "phone_script" ? "phone_script" : "email";
+  const lang = req.body?.lang === "fr" ? "fr" : "en";
   try {
-    const draft = await draftCompany(company, channel);
+    const draft = await draftCompany(company, channel, undefined, lang);
     res.json(draft);
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// BODACC live feed — real French insolvency open data (Phase 5, §9).
+app.get("/api/bodacc", async (req, res) => {
+  const limit = req.query.limit ? Number(req.query.limit) : 8;
+  try {
+    const records = await fetchBodaccParis(limit);
+    res.json({ ok: true, records });
+  } catch (e) {
+    res.json({ ok: false, error: (e as Error).message, records: [] });
   }
 });
 

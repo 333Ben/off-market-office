@@ -46,6 +46,7 @@ interface StoreState {
   activeMatch: ActiveMatch | null;
   toast: { text: string; companyId?: string } | null;
   soundOn: boolean;
+  bodaccOpen: boolean;
 
   load: () => Promise<void>;
   setTab: (tab: Tab) => void;
@@ -65,6 +66,7 @@ interface StoreState {
   setActiveMatch: (m: ActiveMatch | null) => void;
   showToast: (text: string, companyId?: string) => void;
   toggleSound: () => void;
+  toggleBodacc: () => void;
 }
 
 export const useStore = create<StoreState>((set) => ({
@@ -81,6 +83,7 @@ export const useStore = create<StoreState>((set) => ({
   activeMatch: null,
   toast: null,
   soundOn: false,
+  bodaccOpen: false,
 
   load: async () => {
     set({ loading: true, error: null });
@@ -163,6 +166,8 @@ export const useStore = create<StoreState>((set) => ({
   },
 
   toggleSound: () => set((s) => ({ soundOn: !s.soundOn })),
+
+  toggleBodacc: () => set((s) => ({ bodaccOpen: !s.bodaccOpen })),
 }));
 
 // Optional two-note "cha-ching" for a match (muted by default; demo etiquette §12).

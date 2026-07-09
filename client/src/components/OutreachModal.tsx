@@ -14,13 +14,14 @@ export default function OutreachModal({
   const channel = company.type === "outgrower" ? "email" : "phone_script";
   const [draft, setDraft] = useState<OutreachDraft | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lang, setLang] = useState<"en" | "fr">("en");
   const showToast = useStore((s) => s.showToast);
   const upsertCompany = useStore((s) => s.upsertCompany);
 
-  const generate = async () => {
+  const generate = async (l: "en" | "fr" = lang) => {
     setLoading(true);
     try {
-      const d = await draftOutreach(company.id, channel);
+      const d = await draftOutreach(company.id, channel, l);
       setDraft(d);
     } catch {
       setDraft({
@@ -74,13 +75,36 @@ export default function OutreachModal({
               {company.name} · {company.contact?.fullName ?? "decision maker"}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-chip text-muted hover:bg-page hover:text-ink"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Language toggle (Phase 5) */}
+            <div className="flex items-center gap-1 rounded-chip bg-page p-0.5">
+              {(["en", "fr"] as const).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => {
+                    if (l !== lang) {
+                      setLang(l);
+                      generate(l);
+                    }
+                  }}
+                  className={`rounded-[7px] px-2.5 py-1 text-xs font-600 transition ${
+                    lang === l
+                      ? "bg-card text-ink shadow-sm"
+                      : "text-secondary hover:text-ink"
+                  }`}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={onClose}
+              className="grid h-8 w-8 place-items-center rounded-chip text-muted hover:bg-page hover:text-ink"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
@@ -116,7 +140,7 @@ export default function OutreachModal({
 
         <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-4">
           <button
-            onClick={generate}
+            onClick={() => generate()}
             disabled={loading}
             className="flex items-center gap-2 rounded-chip border border-border px-4 py-2 text-sm font-600 text-secondary hover:text-ink disabled:opacity-50"
           >

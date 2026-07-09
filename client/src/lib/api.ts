@@ -61,14 +61,35 @@ export async function enrichCompany(id: string): Promise<Contact> {
 
 export async function draftOutreach(
   id: string,
-  channel: "email" | "phone_script"
+  channel: "email" | "phone_script",
+  lang: "en" | "fr" = "en"
 ): Promise<OutreachDraft> {
   const res = await fetch(`/api/companies/${id}/draft`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ channel }),
+    body: JSON.stringify({ channel, lang }),
   });
   if (!res.ok) throw new Error(`draft failed: ${res.status}`);
+  return res.json();
+}
+
+export interface BodaccRecord {
+  id: string;
+  company: string;
+  ville: string;
+  cp: string;
+  arrondissement: number | null;
+  date: string;
+  tribunal: string;
+  nature: string;
+  url?: string;
+}
+
+export async function fetchBodacc(
+  limit = 8
+): Promise<{ ok: boolean; records: BodaccRecord[]; error?: string }> {
+  const res = await fetch(`/api/bodacc?limit=${limit}`);
+  if (!res.ok) return { ok: false, records: [], error: `HTTP ${res.status}` };
   return res.json();
 }
 
