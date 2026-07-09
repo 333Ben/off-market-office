@@ -14,6 +14,10 @@ const ATTRIBUTION =
 const PARIS_CENTER: [number, number] = [48.8656, 2.345];
 
 // Keeps Leaflet sized to its (animating) container and flies to the selection.
+const prefersReduced = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
 function MapController() {
   const map = useMap();
   const selectedId = useStore((s) => s.selectedId);
@@ -35,7 +39,9 @@ function MapController() {
   useEffect(() => {
     const c = findCompany(companies, selectedId);
     if (!c) return;
-    map.flyTo([c.lat, c.lng], Math.max(map.getZoom(), 14), { duration: 0.6 });
+    const zoom = Math.max(map.getZoom(), 14);
+    if (prefersReduced()) map.setView([c.lat, c.lng], zoom, { animate: false });
+    else map.flyTo([c.lat, c.lng], zoom, { duration: 0.6 });
   }, [selectedId, companies, map]);
 
   // Fit both pins when a match arc appears.
@@ -45,11 +51,11 @@ function MapController() {
     const out = companies.find((c) => c.id === activeMatch.outgrowerId);
     const rel = companies.find((c) => c.id === activeMatch.releaserId);
     if (!out || !rel) return;
-    const bounds = L.latLngBounds(
-      [out.lat, out.lng],
-      [rel.lat, rel.lng]
-    );
-    map.flyToBounds(bounds, { padding: [120, 120], duration: 0.7, maxZoom: 15 });
+    const bounds = L.latLngBounds([out.lat, out.lng], [rel.lat, rel.lng]);
+    if (prefersReduced())
+      map.fitBounds(bounds, { padding: [120, 120], maxZoom: 15, animate: false });
+    else
+      map.flyToBounds(bounds, { padding: [120, 120], duration: 0.7, maxZoom: 15 });
   }, [activeMatch, companies, map]);
 
   return null;

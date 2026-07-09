@@ -44,7 +44,8 @@ interface StoreState {
   pulsingIds: string[];
   consoleOpen: boolean;
   activeMatch: ActiveMatch | null;
-  toast: string | null;
+  toast: { text: string; companyId?: string } | null;
+  soundOn: boolean;
 
   load: () => Promise<void>;
   setTab: (tab: Tab) => void;
@@ -62,7 +63,8 @@ interface StoreState {
   pulse: (id: string) => void;
   toggleConsole: () => void;
   setActiveMatch: (m: ActiveMatch | null) => void;
-  showToast: (text: string) => void;
+  showToast: (text: string, companyId?: string) => void;
+  toggleSound: () => void;
 }
 
 export const useStore = create<StoreState>((set) => ({
@@ -78,6 +80,7 @@ export const useStore = create<StoreState>((set) => ({
   consoleOpen: true,
   activeMatch: null,
   toast: null,
+  soundOn: false,
 
   load: async () => {
     set({ loading: true, error: null });
@@ -151,13 +154,43 @@ export const useStore = create<StoreState>((set) => ({
 
   setActiveMatch: (m) => set({ activeMatch: m }),
 
-  showToast: (text) => {
-    set({ toast: text });
+  showToast: (text, companyId) => {
+    const entry = { text, companyId };
+    set({ toast: entry });
     window.setTimeout(() => {
-      if (useStore.getState().toast === text) set({ toast: null });
-    }, 5000);
+      if (useStore.getState().toast === entry) set({ toast: null });
+    }, 6000);
   },
+
+  toggleSound: () => set((s) => ({ soundOn: !s.soundOn })),
 }));
+
+// Optional two-note "cha-ching" for a match (muted by default; demo etiquette §12).
+function playChime() {
+  try {
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+    [880, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0.0001, now + i * 0.09);
+      gain.gain.exponentialRampToValueAtTime(0.12, now + i * 0.09 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.09 + 0.22);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + i * 0.09);
+      osc.stop(now + i * 0.09 + 0.24);
+    });
+    setTimeout(() => ctx.close(), 800);
+  } catch {
+    /* audio not available — silent */
+  }
+}
 
 // ── SSE wiring: consume the agent event stream and reflect it in the store ──
 export function connectEvents(): () => void {
@@ -199,8 +232,10 @@ export function connectEvents(): () => void {
           const out = s.companies.find((c) => c.id === m.outgrowerId);
           const rel = s.companies.find((c) => c.id === m.releaserId);
           s.showToast(
-            `🤝 ${out?.name ?? "Match"} ↔ ${rel?.name ?? ""} — ${m.score}`
+            `🤝 ${out?.name ?? "Match"} ↔ ${rel?.name ?? ""} — ${m.score}`,
+            m.outgrowerId
           );
+          if (s.soundOn) playChime();
         })
         .catch(() => {});
     }

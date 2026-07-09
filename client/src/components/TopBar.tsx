@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, Volume2, VolumeX } from "lucide-react";
 import { useStore, type Tab } from "../store";
 import { typeColor, typeLabel } from "../lib/format";
 
@@ -16,6 +16,8 @@ export default function TopBar() {
   const setSearch = useStore((s) => s.setSearch);
   const setSelected = useStore((s) => s.setSelected);
   const companies = useStore((s) => s.companies);
+  const soundOn = useStore((s) => s.soundOn);
+  const toggleSound = useStore((s) => s.toggleSound);
   const [focused, setFocused] = useState(false);
 
   const results = useMemo(() => {
@@ -98,6 +100,22 @@ export default function TopBar() {
         )}
       </div>
 
+      {/* Demo hotkey hint */}
+      <div className="hidden items-center gap-1.5 text-[11px] text-muted lg:flex">
+        <Key>S</Key> demo
+        <Key>A</Key> score all
+        <Key>R</Key> reset
+      </div>
+
+      {/* Sound toggle (muted by default — demo etiquette §12) */}
+      <button
+        onClick={toggleSound}
+        className="grid h-9 w-9 place-items-center rounded-chip border border-border bg-card text-secondary hover:text-ink"
+        title={soundOn ? "Match sound on" : "Match sound off"}
+      >
+        {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+      </button>
+
       {/* Signal feed bell */}
       <button
         className="relative grid h-9 w-9 place-items-center rounded-chip border border-border bg-card text-secondary hover:text-ink"
@@ -108,5 +126,13 @@ export default function TopBar() {
 
       <span className="h-8 w-8 rounded-full bg-violet-tint ring-1 ring-border" />
     </header>
+  );
+}
+
+function Key({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="rounded border border-border bg-page px-1.5 py-0.5 font-mono text-[10px] font-600 text-secondary">
+      {children}
+    </kbd>
   );
 }
