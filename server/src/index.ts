@@ -25,7 +25,9 @@ import {
   enrichCompany,
   draftCompany,
   scoreCompany,
+  launchOutreach,
 } from "./pipeline";
+import type { OutreachChannel } from "./types";
 import { rankCandidates } from "./matcher";
 import { fetchBodaccParis, bodaccToCompanies } from "./providers/signals/bodacc";
 import {
@@ -141,6 +143,25 @@ app.get("/api/sillage", async (_req, res) => {
       signals: [],
       total: 0,
     });
+  }
+});
+
+// Push an approved contact list to Max (Digital Crew's AI sales agent).
+app.post("/api/outreach/launch", async (req, res) => {
+  const companyIds: string[] = Array.isArray(req.body?.companyIds)
+    ? req.body.companyIds.filter((x: unknown) => typeof x === "string")
+    : [];
+  const ch = req.body?.channel;
+  const channel: OutreachChannel =
+    ch === "linkedin" || ch === "multi" ? ch : "email";
+  if (companyIds.length === 0) {
+    return res.status(400).json({ error: "companyIds required" });
+  }
+  try {
+    const result = await launchOutreach(companyIds, channel);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
   }
 });
 

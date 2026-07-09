@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UserSearch, Mail, Phone, Check } from "lucide-react";
+import { UserSearch, Mail, Phone, Linkedin, Check } from "lucide-react";
 import type { Company } from "../types";
 import { useStore } from "../store";
 import { enrichCompany, fetchCompany } from "../lib/api";
@@ -28,7 +28,7 @@ export default function ContactBlock({ company }: { company: Company }) {
         Decision maker
       </h3>
 
-      {contact && contact.email ? (
+      {contact && (contact.email || contact.linkedin || contact.phone) ? (
         <div className="rounded-card border border-border bg-card p-3">
           <div className="flex items-center justify-between">
             <div>
@@ -41,15 +41,32 @@ export default function ContactBlock({ company }: { company: Company }) {
             </span>
           </div>
           <div className="mt-3 flex flex-col gap-1.5 text-sm">
-            <a
-              href={`mailto:${contact.email}`}
-              className="flex items-center gap-2 text-violet hover:text-violet-hover"
-            >
-              <Mail className="h-4 w-4" /> {contact.email}
-            </a>
-            <span className="flex items-center gap-2 text-secondary">
-              <Phone className="h-4 w-4" /> {contact.phone}
-            </span>
+            {contact.email && (
+              <a
+                href={`mailto:${contact.email}`}
+                className="flex items-center gap-2 text-violet hover:text-violet-hover"
+              >
+                <Mail className="h-4 w-4" /> {contact.email}
+              </a>
+            )}
+            {contact.phone && (
+              <a
+                href={`tel:${contact.phone.replace(/\s/g, "")}`}
+                className="flex items-center gap-2 text-secondary hover:text-ink"
+              >
+                <Phone className="h-4 w-4" /> {contact.phone}
+              </a>
+            )}
+            {contact.linkedin && (
+              <a
+                href={contact.linkedin}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 text-[#0A66C2] hover:underline"
+              >
+                <Linkedin className="h-4 w-4" /> LinkedIn profile
+              </a>
+            )}
           </div>
         </div>
       ) : loading ? (
