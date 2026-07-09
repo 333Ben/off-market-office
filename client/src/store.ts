@@ -15,6 +15,7 @@ export interface ActiveMatch {
 
 export type Tab = "all" | "outgrower" | "releaser";
 export type TeamBucket = "1–10" | "11–50" | "51–200" | "200+";
+export type View = "map" | "table";
 
 export interface Filters {
   minUrgency: number;
@@ -35,9 +36,14 @@ interface StoreState {
   loading: boolean;
   error: string | null;
   tab: Tab;
+  view: View;
   search: string;
   filters: Filters;
   selectedId: string | null;
+
+  // outreach list — companies the broker has queued to contact
+  contactIds: string[];
+  contactListOpen: boolean;
 
   // agent stream state
   events: AgentEvent[];
@@ -50,8 +56,15 @@ interface StoreState {
 
   load: () => Promise<void>;
   setTab: (tab: Tab) => void;
+  setView: (view: View) => void;
   setSearch: (q: string) => void;
   setSelected: (id: string | null) => void;
+
+  toggleContact: (id: string) => void;
+  addContacts: (ids: string[]) => void;
+  removeContact: (id: string) => void;
+  clearContacts: () => void;
+  setContactListOpen: (open: boolean) => void;
 
   setMinUrgency: (v: number) => void;
   toggleTeamSize: (b: TeamBucket) => void;
@@ -74,9 +87,12 @@ export const useStore = create<StoreState>((set) => ({
   loading: false,
   error: null,
   tab: "all",
+  view: "map",
   search: "",
   filters: DEFAULT_FILTERS,
   selectedId: null,
+  contactIds: [],
+  contactListOpen: false,
   events: [],
   pulsingIds: [],
   consoleOpen: true,
@@ -96,8 +112,24 @@ export const useStore = create<StoreState>((set) => ({
   },
 
   setTab: (tab) => set({ tab }),
+  setView: (view) => set({ view }),
   setSearch: (search) => set({ search }),
   setSelected: (selectedId) => set({ selectedId }),
+
+  toggleContact: (id) =>
+    set((s) => ({
+      contactIds: s.contactIds.includes(id)
+        ? s.contactIds.filter((x) => x !== id)
+        : [...s.contactIds, id],
+    })),
+  addContacts: (ids) =>
+    set((s) => ({
+      contactIds: [...s.contactIds, ...ids.filter((id) => !s.contactIds.includes(id))],
+    })),
+  removeContact: (id) =>
+    set((s) => ({ contactIds: s.contactIds.filter((x) => x !== id) })),
+  clearContacts: () => set({ contactIds: [] }),
+  setContactListOpen: (contactListOpen) => set({ contactListOpen }),
 
   setMinUrgency: (v) =>
     set((s) => ({ filters: { ...s.filters, minUrgency: v } })),
