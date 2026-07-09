@@ -1,10 +1,4 @@
-import {
-  Map as MapIcon,
-  Table2,
-  Send,
-  Bell,
-  Settings,
-} from "lucide-react";
+import { Map as MapIcon, Table2, Send, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useStore, type View } from "../store";
 
@@ -20,7 +14,6 @@ export default function IconRail() {
   const setView = useStore((s) => s.setView);
   const contactIds = useStore((s) => s.contactIds);
   const setContactListOpen = useStore((s) => s.setContactListOpen);
-  const toggleBodacc = useStore((s) => s.toggleBodacc);
 
   return (
     <nav className="flex w-14 shrink-0 flex-col items-center gap-2 border-r border-border bg-card py-4">
@@ -63,15 +56,6 @@ export default function IconRail() {
             {contactIds.length}
           </span>
         )}
-      </button>
-
-      {/* Live BODACC feed */}
-      <button
-        title="Live insolvency feed"
-        onClick={toggleBodacc}
-        className="grid h-10 w-10 place-items-center rounded-chip text-muted transition hover:bg-page hover:text-secondary"
-      >
-        <Bell className="h-5 w-5" />
       </button>
 
       <button
