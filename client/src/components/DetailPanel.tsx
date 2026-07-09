@@ -163,7 +163,7 @@ export default function DetailPanel({ company }: { company: Company }) {
           className="flex w-full items-center justify-center gap-2 rounded-full bg-violet px-4 py-2.5 text-sm font-600 text-white hover:bg-violet-hover"
         >
           <Send className="h-4 w-4" />
-          {isOut ? "Draft outreach" : "Draft phone script"}
+          Draft cadence
         </button>
         {company.status === "contacted" && (
           <p className="mt-2 text-center text-xs font-600 text-success">

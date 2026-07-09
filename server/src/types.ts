@@ -115,6 +115,28 @@ export interface OutreachDraft {
   body: string;
 }
 
+// Multi-channel cadence (§ "Track 1: Acquisition"). One Claude call plans the
+// whole sequence so touches build on each other and never repeat an argument.
+export type CadenceChannel = "email" | "linkedin" | "phone";
+
+export interface CadenceStep {
+  channel: CadenceChannel;
+  day: number; // day offset in the sequence (1, 3, 5, 8)
+  subject?: string; // email steps only
+  body: string;
+  rationale?: string; // one short line: which fact this touch leads on
+}
+
+export interface Cadence {
+  id: string;
+  companyId: string;
+  matchId?: string;
+  lang: "en" | "fr";
+  subjectVariants: string[]; // A/B: two subject lines for the lead email
+  variantPick?: { choice: string; why: string }; // agent's self-critique pick
+  steps: CadenceStep[];
+}
+
 export type AgentEventKind =
   | "signal"
   | "thinking"
@@ -138,4 +160,5 @@ export interface Db {
   companies: Company[];
   matches: Match[];
   drafts: OutreachDraft[];
+  cadences: Cadence[];
 }
