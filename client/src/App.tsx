@@ -19,6 +19,7 @@ export default function App() {
   const error = useStore((s) => s.error);
   const companies = useStore((s) => s.companies);
   const view = useStore((s) => s.view);
+  const setView = useStore((s) => s.setView);
   const selectedId = useStore((s) => s.selectedId);
   const selected = useMemo(
     () => findCompany(companies, selectedId),
@@ -37,6 +38,7 @@ export default function App() {
       const el = e.target as HTMLElement;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
       if (e.key === "s" || e.key === "S") {
+        setView("map"); // the hero arc draws on the map
         simulateSignal();
       } else if (e.key === "a" || e.key === "A") {
         runAgent();
@@ -71,8 +73,9 @@ export default function App() {
             ) : (
               <MapView />
             )}
-            {/* Floating agent popup (top-right); carousel only over the map */}
-            <AgentConsole />
+            {/* Floating agent popup + carousel only over the map (they'd cover
+                the table's columns and row actions in table view) */}
+            {view === "map" && !loading && !error && <AgentConsole />}
             {view === "map" && !loading && !error && <CompanyCarousel />}
           </main>
 
