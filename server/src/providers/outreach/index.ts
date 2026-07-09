@@ -46,8 +46,9 @@ export function getOutreachProvider(): {
     .map((s) => s.trim());
   const token =
     process.env.DIGITALCREW_API_TOKEN || process.env.DIGITALCREW_BEARER_TOKEN;
-  const baseUrl = process.env.DIGITALCREW_API_BASE_URL;
-  if (providers.includes("max") && token && baseUrl) {
+  const baseUrl =
+    process.env.DIGITALCREW_API_BASE_URL || "https://max.digitalcrew.tech";
+  if (providers.includes("max") && token) {
     return { provider: new MaxOutreachProvider(baseUrl, token), real: true };
   }
   return { provider: new MockOutreachProvider(), real: false };

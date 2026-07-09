@@ -1,9 +1,11 @@
-// Real Max adapter — talks to the Digital Crew "Max" MCP server over Streamable
-// HTTP (JSON-RPC at POST /mcp, Bearer auth), per github.com/digital-crew-
-// technologies/max-mcp-server. Only the transport (endpoint + auth) is taken
-// from the docs; the specific outreach TOOL NAME and argument shape are left
-// configurable via env so we never invent an external schema. Any failure
-// throws so the pipeline falls back to the mock provider.
+// Real Max adapter — Digital Crew "Max" AI sales agent, REST API v1
+// (https://max.digitalcrew.tech, docs.digitalcrew.tech). Bearer max_live_ auth.
+// "Contact via Max" hands the approved contact list to Max as a prospect list
+// (POST /api/v1/prospect-lists/import-csv) — a real, visible list in the Max
+// workspace, ready for Max to run a campaign. Launching an actual campaign
+// additionally requires a connected sending account (Unipile), which the broker
+// connects in the Max app; when none is connected we stop at the list and say so.
+// Any failure throws so the pipeline falls back to the mock provider.
 
 import type {
   OutreachProvider,
@@ -11,141 +13,84 @@ import type {
   OutreachLaunchOutput,
 } from "./index";
 
-const PROTOCOL_VERSION = "2025-06-18";
-
-interface JsonRpcResponse {
-  result?: unknown;
-  error?: { code: number; message: string };
-}
-
 export class MaxOutreachProvider implements OutreachProvider {
-  private id = 0;
-
   constructor(
     private baseUrl: string,
     private token: string
   ) {}
 
-  private endpoint(): string {
-    return `${this.baseUrl.replace(/\/$/, "")}/mcp`;
+  private url(path: string): string {
+    return `${this.baseUrl.replace(/\/$/, "")}${path}`;
   }
 
-  private headers(sessionId?: string): Record<string, string> {
-    const h: Record<string, string> = {
+  private headers(): Record<string, string> {
+    return {
       Authorization: `Bearer ${this.token}`,
       "Content-Type": "application/json",
-      Accept: "application/json, text/event-stream",
-      "MCP-Protocol-Version": PROTOCOL_VERSION,
+      Accept: "application/json",
     };
-    if (process.env.MCP_GATEWAY_SECRET)
-      h["X-MCP-Gateway-Key"] = process.env.MCP_GATEWAY_SECRET;
-    if (sessionId) h["Mcp-Session-Id"] = sessionId;
-    return h;
-  }
-
-  /** POST a JSON-RPC message; returns { body, sessionId }. */
-  private async rpc(
-    method: string,
-    params: unknown,
-    sessionId?: string
-  ): Promise<{ res: JsonRpcResponse | null; sessionId?: string }> {
-    const resp = await fetch(this.endpoint(), {
-      method: "POST",
-      headers: this.headers(sessionId),
-      body: JSON.stringify({ jsonrpc: "2.0", id: ++this.id, method, params }),
-    });
-    if (!resp.ok) {
-      throw new Error(`Max MCP ${method} → HTTP ${resp.status}`);
-    }
-    const newSession = resp.headers.get("Mcp-Session-Id") ?? sessionId;
-    const text = await resp.text();
-    return { res: parseRpcBody(text), sessionId: newSession ?? undefined };
   }
 
   async launch(input: OutreachLaunchInput): Promise<OutreachLaunchOutput> {
-    const reachable = input.targets.filter(
-      (t) => t.email || t.linkedin || t.phone
-    );
+    const reachable = input.targets.filter((t) => t.email);
+    if (reachable.length === 0) {
+      throw new Error("Max: no contacts with an email to import");
+    }
 
-    // 1) Handshake.
-    const init = await this.rpc("initialize", {
-      protocolVersion: PROTOCOL_VERSION,
-      capabilities: {},
-      clientInfo: { name: "outgrow", version: "0.1.0" },
+    const prospects = reachable.map((t) => {
+      const [first, ...rest] = (t.contactName ?? "").split(" ");
+      return {
+        email: t.email!,
+        first_name: first || undefined,
+        last_name: rest.join(" ") || undefined,
+        title: t.role || undefined,
+        linkedin_url: t.linkedin || undefined,
+        organization_domain: t.email!.split("@")[1],
+      };
     });
-    const sessionId = init.sessionId;
 
-    // 2) The outreach tool name + argument shape come from the Max docs — kept
-    //    configurable so this adapter never hard-codes an unverified schema.
-    const toolName = process.env.MAX_OUTREACH_TOOL || "create_campaign";
-    const call = await this.rpc(
-      "tools/call",
-      {
-        name: toolName,
-        arguments: {
-          name: input.listName || "Outgrow outreach",
-          channel: input.channel,
-          contacts: reachable.map((t) => ({
-            company: t.companyName,
-            fullName: t.contactName,
-            role: t.role,
-            email: t.email,
-            phone: t.phone,
-            linkedin: t.linkedin,
-          })),
-        },
-      },
-      sessionId
-    );
+    const listName =
+      input.listName || `OMO outreach — ${new Date().toISOString().slice(0, 10)}`;
 
-    if (call.res?.error) {
-      throw new Error(`Max ${toolName}: ${call.res.error.message}`);
+    // Create the prospect list in Max (one call: list + prospects).
+    const res = await fetch(this.url("/api/v1/prospect-lists/import-csv"), {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ list_name: listName, prospects }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Max import-csv ${res.status}${body ? `: ${body.slice(0, 160)}` : ""}`);
     }
-
-    const campaignId = extractCampaignId(call.res?.result) ?? `max-${Date.now().toString(36)}`;
-    return {
-      campaignId,
-      queued: reachable.length,
-      message: `Max campaign ${campaignId} launched (${reachable.length} ${input.channel} contacts)`,
+    const json = (await res.json()) as {
+      data?: { id?: string; list_name?: string };
+      imported?: number;
+      existing?: number;
     };
-  }
-}
+    const listId = json.data?.id ?? "unknown";
+    const queued = (json.imported ?? 0) + (json.existing ?? 0);
 
-/** Max may reply as plain JSON or an SSE stream of `data:` lines — handle both. */
-function parseRpcBody(text: string): JsonRpcResponse | null {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-  if (trimmed.startsWith("{")) {
+    // A campaign can only actually send if a sending account is connected.
+    let accounts = 0;
     try {
-      return JSON.parse(trimmed) as JsonRpcResponse;
+      const a = await fetch(this.url("/api/v1/accounts"), {
+        headers: this.headers(),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (a.ok) {
+        const aj = (await a.json()) as { data?: unknown[] };
+        accounts = aj.data?.length ?? 0;
+      }
     } catch {
-      return null;
+      /* non-fatal */
     }
-  }
-  // SSE: take the last non-empty `data:` payload.
-  const payloads = trimmed
-    .split("\n")
-    .filter((l) => l.startsWith("data:"))
-    .map((l) => l.slice(5).trim())
-    .filter(Boolean);
-  const last = payloads[payloads.length - 1];
-  if (!last) return null;
-  try {
-    return JSON.parse(last) as JsonRpcResponse;
-  } catch {
-    return null;
-  }
-}
 
-/** Best-effort dig for a campaign/id in the tool result's structured content. */
-function extractCampaignId(result: unknown): string | null {
-  if (!result || typeof result !== "object") return null;
-  const r = result as Record<string, unknown>;
-  const structured = r.structuredContent as Record<string, unknown> | undefined;
-  const candidate =
-    (structured?.campaignId as string) ||
-    (structured?.id as string) ||
-    (r.campaignId as string) ||
-    (r.id as string);
-  return typeof candidate === "string" ? candidate : null;
+    const message =
+      accounts > 0
+        ? `Max: list "${listName}" ready (${queued} contacts) — launch a ${input.channel} campaign in Max`
+        : `Max: created list "${listName}" with ${queued} contacts. Connect a sending account in Max to launch.`;
+
+    return { campaignId: listId, queued, message };
+  }
 }

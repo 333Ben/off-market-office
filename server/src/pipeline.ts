@@ -230,8 +230,9 @@ export async function launchOutreach(
 
   let out;
   let usedReal = real;
+  const listName = `OMO outreach — ${new Date().toISOString().slice(0, 10)}`;
   try {
-    out = await provider.launch({ targets, channel, listName: "Outgrow list" });
+    out = await provider.launch({ targets, channel, listName });
   } catch (e) {
     emit("error", `Max failed (${(e as Error).message}) — using mock`);
     out = await mockOutreach.launch({ targets, channel });
