@@ -24,6 +24,7 @@ import {
   ingestSignal,
   enrichCompany,
   draftCompany,
+  scoreCompany,
 } from "./pipeline";
 import { rankCandidates } from "./matcher";
 import { fetchBodaccParis, bodaccToCompanies } from "./providers/signals/bodacc";
@@ -163,9 +164,19 @@ app.post("/api/bodacc/import", async (req, res) => {
     const added = addCompanies(companies);
     emit(
       "signal",
-      `BODACC: imported ${added} distressed companies likely to release space`
+      `BODACC: imported ${added.length} distressed companies likely to release space`
     );
-    res.json({ ok: true, added, total: companies.length });
+    res.json({ ok: true, added: added.length, total: companies.length });
+
+    // Score each real company with Claude, paced so the console streams live.
+    (async () => {
+      for (const c of added) {
+        await scoreCompany(c);
+        await new Promise((r) => setTimeout(r, 300));
+      }
+      if (added.length)
+        emit("info", `Scored ${added.length} BODACC companies.`);
+    })().catch((e) => emit("error", `BODACC scoring failed: ${e.message}`));
   } catch (e) {
     emit("error", `BODACC import failed: ${(e as Error).message}`);
     res.json({ ok: false, added: 0, error: (e as Error).message });
