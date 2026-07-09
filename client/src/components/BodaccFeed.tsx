@@ -1,16 +1,32 @@
 import { useEffect, useState } from "react";
-import { X, RefreshCw, ExternalLink, Radio } from "lucide-react";
+import { X, RefreshCw, ExternalLink, Radio, MapPin } from "lucide-react";
 import { useStore } from "../store";
-import { fetchBodacc, type BodaccRecord } from "../lib/api";
+import { fetchBodacc, importBodacc, type BodaccRecord } from "../lib/api";
 
 // Live BODACC feed — REAL French insolvency filings from the public
 // OpenDataSoft API. Deliberately kept separate from the synthetic demo set.
 export default function BodaccFeed() {
   const open = useStore((s) => s.bodaccOpen);
   const toggle = useStore((s) => s.toggleBodacc);
+  const load = useStore((s) => s.load);
+  const showToast = useStore((s) => s.showToast);
   const [records, setRecords] = useState<BodaccRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const addToMap = async () => {
+    setImporting(true);
+    const r = await importBodacc(12);
+    setImporting(false);
+    if (r.ok) {
+      await load();
+      showToast(`Added ${r.added} distressed companies to the map`);
+      toggle();
+    } else {
+      setError(r.error ?? "Import failed");
+    }
+  };
 
   const refresh = async () => {
     setLoading(true);
@@ -128,6 +144,21 @@ export default function BodaccFeed() {
               ))}
             </ul>
           )}
+        </div>
+
+        {/* Add to map */}
+        <div className="border-t border-border p-4">
+          <button
+            onClick={addToMap}
+            disabled={importing || loading}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-violet px-4 py-2.5 text-sm font-600 text-white hover:bg-violet-hover disabled:opacity-50"
+          >
+            <MapPin className="h-4 w-4" />
+            {importing ? "Adding…" : "Add these to the map as sellers"}
+          </button>
+          <p className="mt-2 text-center text-[11px] text-muted">
+            Real companies · office size is estimated
+          </p>
         </div>
       </div>
     </div>

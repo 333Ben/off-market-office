@@ -48,7 +48,7 @@ export default function AgentConsole() {
   }, [events, open]);
 
   return (
-    <div className="pointer-events-auto absolute bottom-5 left-5 z-[1100] w-[360px] overflow-hidden rounded-panel border border-border bg-card shadow-pop">
+    <div className="pointer-events-auto absolute right-4 top-4 z-[1100] w-[340px] overflow-hidden rounded-panel border border-border bg-card shadow-pop">
       {/* Header */}
       <button
         onClick={toggle}

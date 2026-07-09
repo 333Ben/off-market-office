@@ -66,6 +66,8 @@ export interface Company {
   signals: Signal[];
   contact?: Contact;
   matchIds: string[];
+  origin?: "seed" | "bodacc";
+  estimated?: boolean;
 }
 
 export interface Match {

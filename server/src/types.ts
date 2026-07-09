@@ -72,6 +72,10 @@ export interface Company {
   signals: Signal[];
   contact?: Contact;
   matchIds: string[];
+
+  // provenance: undefined/"seed" = synthetic demo, "bodacc" = real public record
+  origin?: "seed" | "bodacc";
+  estimated?: boolean; // office/space figures are estimated (real companies)
 }
 
 export interface Match {

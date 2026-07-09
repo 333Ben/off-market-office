@@ -26,15 +26,22 @@ export default function DetailPanel({ company }: { company: Company }) {
       {/* Header */}
       <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-border bg-card px-5 py-4">
         <div className="min-w-0 flex-1">
-          <span
-            className="mb-1.5 inline-block rounded-chip px-2 py-0.5 text-[11px] font-600"
-            style={{
-              background: isOut ? "var(--violet-tint)" : "var(--coral-tint)",
-              color,
-            }}
-          >
-            {typeLabel(company)}
-          </span>
+          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+            <span
+              className="inline-block rounded-chip px-2 py-0.5 text-[11px] font-600"
+              style={{
+                background: isOut ? "var(--violet-tint)" : "var(--coral-tint)",
+                color,
+              }}
+            >
+              {typeLabel(company)}
+            </span>
+            {company.origin === "bodacc" && (
+              <span className="rounded-chip bg-success/10 px-1.5 py-0.5 text-[10px] font-700 text-success">
+                LIVE · BODACC public record
+              </span>
+            )}
+          </div>
           <h2 className="truncate text-lg font-700 text-ink">{company.name}</h2>
           <p className="text-sm text-secondary">
             {company.industry} · {company.arrondissement}e · Paris
@@ -127,6 +134,14 @@ export default function DetailPanel({ company }: { company: Company }) {
             Motivation to move:{" "}
             <b className="capitalize">{company.motivation}</b>
           </div>
+        )}
+
+        {company.estimated && (
+          <p className="-mt-2 text-[11px] leading-snug text-muted">
+            Office size, headcount and availability are <b>estimated</b>. The
+            company name, arrondissement, filing type and date are from the real
+            BODACC public record.
+          </p>
         )}
 
         {/* Signals */}

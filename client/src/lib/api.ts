@@ -93,6 +93,51 @@ export async function fetchBodacc(
   return res.json();
 }
 
+export async function importBodacc(
+  limit = 12
+): Promise<{ ok: boolean; added: number; error?: string }> {
+  const res = await fetch("/api/bodacc/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ limit }),
+  });
+  if (!res.ok) return { ok: false, added: 0, error: `HTTP ${res.status}` };
+  return res.json();
+}
+
+export interface SillageAccount {
+  id: number;
+  name: string;
+  domain?: string;
+  linkedinUrl?: string;
+  logoUrl?: string;
+  status?: string;
+  importedAt?: string;
+}
+export interface SillageSignal {
+  id: string;
+  company: string;
+  type: string;
+  title: string;
+  author?: string;
+  headline?: string;
+  date?: string;
+  url?: string;
+}
+export async function fetchSillage(): Promise<{
+  ok: boolean;
+  enabled: boolean;
+  accounts: SillageAccount[];
+  signals: SillageSignal[];
+  total: number;
+  error?: string;
+}> {
+  const res = await fetch("/api/sillage");
+  if (!res.ok)
+    return { ok: false, enabled: false, accounts: [], signals: [], total: 0 };
+  return res.json();
+}
+
 export async function approveMatch(id: string): Promise<Match> {
   const res = await fetch(`/api/matches/${id}/approve`, { method: "POST" });
   if (!res.ok) throw new Error(`approve failed: ${res.status}`);

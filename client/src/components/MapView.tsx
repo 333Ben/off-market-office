@@ -80,6 +80,7 @@ export default function MapView() {
         minZoom={12}
         maxZoom={17}
         zoomControl={false}
+        attributionControl={false}
         className="h-full w-full"
       >
         <TileLayer url={TILE_URL} attribution={ATTRIBUTION} />
@@ -91,13 +92,16 @@ export default function MapView() {
       </MapContainer>
       <Toast />
 
-      {/* Result count + synthetic-data note (bottom-right, clear of the agent popup) */}
-      <div className="pointer-events-none absolute bottom-3 right-3 z-[1000] flex items-center gap-2">
+      {/* Result count + synthetic-data note (top-left; bottom is the carousel) */}
+      <div className="pointer-events-none absolute left-3 top-3 z-[1000] flex items-center gap-2">
         <span className="rounded-chip bg-card/90 px-2.5 py-1 text-xs font-600 text-ink shadow-soft backdrop-blur tnum">
           {companies.length} shown
         </span>
         <span className="rounded-chip bg-card/90 px-2.5 py-1 text-xs text-muted shadow-soft backdrop-blur">
-          Demo data is synthetic
+          Synthetic demo · <span className="text-success">green ring = live BODACC</span>
+        </span>
+        <span className="rounded-chip bg-card/80 px-2 py-1 text-[10px] text-muted shadow-soft backdrop-blur">
+          © OpenStreetMap · © CARTO
         </span>
       </div>
     </div>

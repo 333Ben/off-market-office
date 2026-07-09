@@ -65,6 +65,15 @@ export function getCompany(id: string): Company | undefined {
   return db.companies.find((c) => c.id === id);
 }
 
+/** Append companies that aren't already present (by id). Returns count added. */
+export function addCompanies(companies: Company[]): number {
+  const existing = new Set(db.companies.map((c) => c.id));
+  const fresh = companies.filter((c) => !existing.has(c.id));
+  db.companies.push(...fresh);
+  if (fresh.length) persist();
+  return fresh.length;
+}
+
 export function getDb(): Db {
   return db;
 }

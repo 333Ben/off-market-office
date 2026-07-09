@@ -11,9 +11,9 @@ export default {
         secondary: "#565D78",
         muted: "#949BB4",
         violet: {
-          DEFAULT: "#4F46E5",
-          hover: "#4338CA",
-          tint: "#ECEDFE",
+          DEFAULT: "#6C5CE7",
+          hover: "#5A48D6",
+          tint: "#EEECFC",
         },
         coral: {
           DEFAULT: "#FF5A5F",

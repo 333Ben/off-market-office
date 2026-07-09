@@ -9,10 +9,10 @@
   --secondary: #565d78;
   --muted: #949bb4;
 
-  /* Primary — rich indigo (outgrowers / UI accent) */
-  --violet: #4f46e5;
-  --violet-hover: #4338ca;
-  --violet-tint: #ecedfe;
+  /* Primary — friendly violet (outgrowers / UI accent) */
+  --violet: #6c5ce7;
+  --violet-hover: #5a48d6;
+  --violet-tint: #eeecfc;
 
   /* Releasers — rich coral */
   --coral: #ff5a5f;
@@ -36,13 +36,13 @@
 /* Pin animations. Disabled under reduced-motion (§12 quality floor). */
 @keyframes pin-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.45);
+    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0.45);
   }
   70% {
-    box-shadow: 0 0 0 12px rgba(79, 70, 229, 0);
+    box-shadow: 0 0 0 12px rgba(108, 92, 231, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
   }
 }
 @keyframes pin-pulse-coral {

@@ -2,7 +2,7 @@
 
 import type { Company } from "../types";
 
-export const VIOLET = "#4F46E5";
+export const VIOLET = "#6C5CE7";
 export const CORAL = "#FF5A5F";
 
 export function typeColor(c: Company): string {

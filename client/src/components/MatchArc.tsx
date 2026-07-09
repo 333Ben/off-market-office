@@ -10,7 +10,7 @@ function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 function lerpColor(t: number): string {
-  const c1 = [79, 70, 229]; // indigo
+  const c1 = [108, 92, 231]; // violet
   const c2 = [255, 90, 95]; // coral
   const r = Math.round(lerp(c1[0], c2[0], t));
   const g = Math.round(lerp(c1[1], c2[1], t));

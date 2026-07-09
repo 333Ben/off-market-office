@@ -11,6 +11,7 @@ function buildIcon(c: Company, selected: boolean, quick: boolean): L.DivIcon {
   const d = pinDiameter(c.urgencyScore);
   const color = typeColor(c);
   const isOut = c.type === "outgrower";
+  const live = c.origin === "bodacc";
   const pulse = quick
     ? isOut
       ? "pin-quick-violet"
@@ -22,7 +23,9 @@ function buildIcon(c: Company, selected: boolean, quick: boolean): L.DivIcon {
       : "";
   const ring = selected
     ? `box-shadow:0 0 0 4px ${color}55,0 1px 4px rgba(23,23,31,0.25);`
-    : `box-shadow:0 1px 4px rgba(23,23,31,0.25);`;
+    : live
+      ? `box-shadow:0 0 0 3px rgba(22,163,74,0.45),0 1px 4px rgba(23,23,31,0.25);`
+      : `box-shadow:0 1px 4px rgba(23,23,31,0.25);`;
   const html = `<span class="${pulse}" style="
       display:block;width:${d}px;height:${d}px;border-radius:9999px;
       background:${color};border:2px solid #fff;${ring}"></span>`;
@@ -58,7 +61,7 @@ export default function CompanyPin({ company }: { company: Company }) {
             </div>
             <MiniRing value={company.urgencyScore} color={color} />
           </div>
-          <div className="mt-2.5 flex items-center gap-2">
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <span
               className="rounded-chip px-2 py-0.5 text-[11px] font-600"
               style={{
@@ -71,6 +74,11 @@ export default function CompanyPin({ company }: { company: Company }) {
             >
               {typeLabel(company)}
             </span>
+            {company.origin === "bodacc" && (
+              <span className="rounded-chip bg-success/10 px-1.5 py-0.5 text-[10px] font-700 text-success">
+                LIVE · BODACC
+              </span>
+            )}
             <span className="tnum text-xs font-600 text-secondary">
               {heroStat(company)}
             </span>

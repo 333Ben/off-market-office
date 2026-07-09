@@ -1,6 +1,9 @@
 // BODACC live feed (§9, Phase 5). Real French insolvency open data from the
-// public OpenDataSoft API — no key required. Clearly separated from the
-// synthetic demo set in the UI. This is genuine external data, not invented.
+// public OpenDataSoft API — no key required. Also converts filings into
+// releaser companies for the map (distressed firms likely to release office).
+
+import type { Company, Signal } from "../../types";
+import { jitter } from "../../paris";
 
 const BASE =
   "https://bodacc-datadila.opendatasoft.com/api/explore/v2.1/catalog/datasets/annonces-commerciales/records";
@@ -63,4 +66,89 @@ export async function fetchBodaccParis(limit = 8): Promise<BodaccRecord[]> {
       url: typeof r.url_complete === "string" ? r.url_complete : undefined,
     };
   });
+}
+
+// ── BODACC → map companies ───────────────────────────────────────────────────
+
+function hash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+function weeksAheadISO(weeks: number): string {
+  return new Date(Date.now() + weeks * 7 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/**
+ * Turn distressed BODACC filings into releaser companies. Names, arrondissement,
+ * filing type and date are REAL (public record); office size and headcount are
+ * ESTIMATED (flagged `estimated`) since BODACC doesn't publish them.
+ */
+export function bodaccToCompanies(records: BodaccRecord[]): Company[] {
+  const out: Company[] = [];
+  for (const r of records) {
+    if (r.arrondissement == null) continue; // need a location to place it
+    const seed = hash(r.id + r.company);
+    const nature = r.nature.toLowerCase();
+
+    let motivation: Company["motivation"];
+    let weeks: number;
+    let urgency: number;
+    if (nature.includes("liquidation")) {
+      motivation = "urgent";
+      weeks = 4;
+      urgency = 82;
+    } else if (nature.includes("redressement")) {
+      motivation = "high";
+      weeks = 8;
+      urgency = 74;
+    } else {
+      motivation = "moderate";
+      weeks = 10;
+      urgency = 66;
+    }
+
+    const availableSqm = 150 + (seed % 56) * 10; // 150–700 m², deterministic
+    const [lat, lng] = jitter(r.arrondissement, seed);
+
+    const signal: Signal = {
+      id: `sig-bodacc-${r.id}`,
+      companyId: `bodacc-${r.id}`,
+      type: "insolvency_filing",
+      source: "bodacc",
+      title: r.nature,
+      detail: `${r.tribunal || "Tribunal de commerce de Paris"} · published ${r.date}`,
+      timestamp: r.date ? new Date(r.date).toISOString() : new Date().toISOString(),
+      weight: 80,
+    };
+
+    out.push({
+      id: `bodacc-${r.id}`,
+      name: r.company,
+      type: "releaser",
+      industry: "Insolvency (BODACC)",
+      arrondissement: r.arrondissement,
+      address: `${r.ville} ${r.cp}`,
+      lat,
+      lng,
+      headcount: Math.max(1, Math.round(availableSqm / 20)),
+      officeSqm: availableSqm,
+      capacityDesks: Math.round(availableSqm / 10),
+      wasHeadcount: Math.round(availableSqm / 8),
+      releaseReason: "insolvency",
+      availableSqm,
+      availableFrom: weeksAheadISO(weeks),
+      motivation,
+      urgencyScore: urgency,
+      status: "new",
+      signals: [signal],
+      matchIds: [],
+      origin: "bodacc",
+      estimated: true,
+    });
+  }
+  return out;
 }

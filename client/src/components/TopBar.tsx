@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Bell, Volume2, VolumeX } from "lucide-react";
+import { Search, Bell, Volume2, VolumeX, Radio } from "lucide-react";
 import { useStore, type Tab } from "../store";
 import { typeColor, typeLabel } from "../lib/format";
 
@@ -19,6 +19,7 @@ export default function TopBar() {
   const soundOn = useStore((s) => s.soundOn);
   const toggleSound = useStore((s) => s.toggleSound);
   const toggleBodacc = useStore((s) => s.toggleBodacc);
+  const toggleSillage = useStore((s) => s.toggleSillage);
   const [focused, setFocused] = useState(false);
 
   const results = useMemo(() => {
@@ -48,26 +49,29 @@ export default function TopBar() {
         <span className="text-lg font-700 tracking-tight text-ink">Outgrow</span>
       </div>
 
-      {/* Segmented control */}
-      <div className="flex items-center gap-1 rounded-chip bg-page p-1">
+      {/* Text tabs */}
+      <nav className="flex items-center gap-5">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`rounded-[8px] px-3 py-1.5 text-sm font-500 transition ${
+            className={`relative pb-1 text-sm transition ${
               tab === t.id
-                ? "bg-card text-ink shadow-sm"
-                : "text-secondary hover:text-ink"
+                ? "font-700 text-ink"
+                : "font-500 text-muted hover:text-ink"
             }`}
           >
             {t.label}
+            {tab === t.id && (
+              <span className="absolute inset-x-0 -bottom-[1px] h-0.5 rounded-full bg-violet" />
+            )}
           </button>
         ))}
-      </div>
+      </nav>
 
-      {/* Search */}
-      <div className="relative ml-auto w-72">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+      {/* Search (centered) */}
+      <div className="relative mx-auto w-full max-w-md">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -77,8 +81,8 @@ export default function TopBar() {
             if (e.key === "Enter" && results[0]) pick(results[0].id);
             if (e.key === "Escape") setSearch("");
           }}
-          placeholder="Search companies"
-          className="w-full rounded-chip border border-border bg-page py-2 pl-9 pr-3 text-sm text-ink placeholder:text-muted focus:border-violet focus:bg-card"
+          placeholder="Search companies, e.g. Cartesia Labs"
+          className="w-full rounded-full border border-border bg-page py-2.5 pl-10 pr-4 text-sm text-ink placeholder:text-muted focus:border-violet focus:bg-card"
         />
         {focused && results.length > 0 && (
           <ul className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-card border border-border bg-card shadow-soft">
@@ -120,6 +124,16 @@ export default function TopBar() {
         title={soundOn ? "Match sound on" : "Match sound off"}
       >
         {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+      </button>
+
+      {/* Live Sillage feed (real demand-side signals) */}
+      <button
+        onClick={toggleSillage}
+        className="relative grid h-9 w-9 place-items-center rounded-chip border border-border bg-card text-secondary hover:text-ink"
+        title="Live Sillage feed — tracked accounts & signals (real data)"
+      >
+        <Radio className="h-4 w-4" />
+        <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-violet ring-2 ring-card" />
       </button>
 
       {/* Live BODACC feed */}

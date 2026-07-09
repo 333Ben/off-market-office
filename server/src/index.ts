@@ -15,6 +15,7 @@ import {
   resetDb,
   getMatches,
   getMatch,
+  addCompanies,
 } from "./store";
 import { subscribe, emit } from "./events";
 import {
@@ -25,7 +26,12 @@ import {
   draftCompany,
 } from "./pipeline";
 import { rankCandidates } from "./matcher";
-import { fetchBodaccParis } from "./providers/signals/bodacc";
+import { fetchBodaccParis, bodaccToCompanies } from "./providers/signals/bodacc";
+import {
+  sillageEnabled,
+  fetchSillageAccounts,
+  fetchSillageSignals,
+} from "./providers/signals/sillage";
 import type { Signal } from "./types";
 
 const PORT = Number(process.env.PORT) || 3001;
@@ -108,6 +114,35 @@ app.post("/api/companies/:id/draft", async (req, res) => {
   }
 });
 
+// Sillage live feed — real demand-side signals for the team's tracked accounts.
+app.get("/api/sillage", async (_req, res) => {
+  if (!sillageEnabled()) {
+    return res.json({ ok: true, enabled: false, accounts: [], signals: [], total: 0 });
+  }
+  try {
+    const [accounts, sig] = await Promise.all([
+      fetchSillageAccounts(),
+      fetchSillageSignals(12),
+    ]);
+    res.json({
+      ok: true,
+      enabled: true,
+      accounts,
+      signals: sig.signals,
+      total: sig.total,
+    });
+  } catch (e) {
+    res.json({
+      ok: false,
+      enabled: true,
+      error: (e as Error).message,
+      accounts: [],
+      signals: [],
+      total: 0,
+    });
+  }
+});
+
 // BODACC live feed — real French insolvency open data (Phase 5, §9).
 app.get("/api/bodacc", async (req, res) => {
   const limit = req.query.limit ? Number(req.query.limit) : 8;
@@ -116,6 +151,24 @@ app.get("/api/bodacc", async (req, res) => {
     res.json({ ok: true, records });
   } catch (e) {
     res.json({ ok: false, error: (e as Error).message, records: [] });
+  }
+});
+
+// Import distressed BODACC companies onto the map as releasers.
+app.post("/api/bodacc/import", async (req, res) => {
+  const limit = req.body?.limit ? Number(req.body.limit) : 12;
+  try {
+    const records = await fetchBodaccParis(limit);
+    const companies = bodaccToCompanies(records);
+    const added = addCompanies(companies);
+    emit(
+      "signal",
+      `BODACC: imported ${added} distressed companies likely to release space`
+    );
+    res.json({ ok: true, added, total: companies.length });
+  } catch (e) {
+    emit("error", `BODACC import failed: ${(e as Error).message}`);
+    res.json({ ok: false, added: 0, error: (e as Error).message });
   }
 });
 
