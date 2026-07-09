@@ -6,7 +6,9 @@ import type {
   Company,
   Contact,
   Match,
+  OutreachChannel,
   OutreachDraft,
+  OutreachResult,
   Signal,
   SignalType,
   SignalSource,
@@ -31,8 +33,14 @@ import { deskCapacity, monthsToBreach, neededSqm } from "./spacemath";
 import { rankCandidates, computeFit, type Fit } from "./matcher";
 import { MockEnrichmentProvider } from "./providers/enrichment/mock";
 import { getEnrichmentProvider } from "./providers/enrichment/index";
+import {
+  getOutreachProvider,
+  MockOutreachProvider,
+  type OutreachTarget,
+} from "./providers/outreach/index";
 
 const mockEnrichment = new MockEnrichmentProvider();
+const mockOutreach = new MockOutreachProvider();
 let matchSeq = 0;
 let draftSeq = 0;
 
@@ -185,10 +193,74 @@ export async function enrichCompany(c: Company): Promise<Contact> {
   saveDb();
   emit(
     "tool_result",
-    `Found ${contact.fullName} (${contact.role}) — ${maskEmail(contact.email)} · ${maskPhone(contact.phone)}`,
+    `Found ${contact.fullName} (${contact.role}) — ${maskEmail(contact.email)} · ${maskPhone(contact.phone)}${contact.linkedin ? " · LinkedIn ✓" : ""}`,
     c.id
   );
   return contact;
+}
+
+/** Push an approved contact list to Max (mock by default; real MCP when
+ *  PROVIDERS=max + token). Marks the companies "contacted" and narrates the
+ *  console. Real failures fall back to mock so the flow never breaks. */
+export async function launchOutreach(
+  companyIds: string[],
+  channel: OutreachChannel
+): Promise<OutreachResult> {
+  const companies = companyIds
+    .map((id) => getCompany(id))
+    .filter((c): c is Company => Boolean(c));
+
+  const targets: OutreachTarget[] = companies.map((c) => ({
+    companyId: c.id,
+    companyName: c.name,
+    contactName: c.contact?.fullName,
+    role: c.contact?.role,
+    email: c.contact?.email,
+    phone: c.contact?.phone,
+    linkedin: c.contact?.linkedin,
+  }));
+  const reachable = targets.filter((t) => t.email || t.linkedin || t.phone);
+  const skipped = companies.length - reachable.length;
+
+  const { provider, real } = getOutreachProvider();
+  emit(
+    "tool_call",
+    `Max${real ? "" : " (mock)"}: launching ${channel} campaign for ${reachable.length} contact(s)`
+  );
+
+  let out;
+  let usedReal = real;
+  try {
+    out = await provider.launch({ targets, channel, listName: "Outgrow list" });
+  } catch (e) {
+    emit("error", `Max failed (${(e as Error).message}) — using mock`);
+    out = await mockOutreach.launch({ targets, channel });
+    usedReal = false;
+  }
+
+  // Mark reachable companies contacted.
+  const reachedIds = new Set(reachable.map((t) => t.companyId));
+  for (const c of companies) {
+    if (reachedIds.has(c.id)) c.status = "contacted";
+  }
+  saveDb();
+
+  emit(
+    "tool_result",
+    `Max campaign ${out.campaignId} — ${out.queued} queued${skipped ? `, ${skipped} skipped (no contact)` : ""}`
+  );
+
+  return {
+    ok: true,
+    provider: "max",
+    real: usedReal,
+    campaignId: out.campaignId,
+    channel,
+    queued: out.queued,
+    skipped,
+    companyIds: reachable.map((t) => t.companyId),
+    message: out.message,
+  };
 }
 
 /** Create + persist a match for a specific outgrower/releaser pair (Claude rationale). */

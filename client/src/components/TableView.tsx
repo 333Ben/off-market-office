@@ -9,6 +9,9 @@ import {
   DoorOpen,
   Building2,
   ChevronDown,
+  Mail,
+  Phone,
+  Linkedin,
 } from "lucide-react";
 import type { Company } from "../types";
 import {
@@ -401,13 +404,43 @@ function Row({
       </td>
 
       <td className="px-3 py-2.5 align-middle">
-        {contact && contact.email ? (
+        {contact && (contact.email || contact.linkedin || contact.phone) ? (
           <div className="min-w-0">
             <div className="flex items-center gap-1 truncate font-500 text-ink">
               <Check className="h-3.5 w-3.5 shrink-0 text-success" />
               {contact.fullName}
             </div>
-            <div className="truncate text-xs text-muted">{contact.email}</div>
+            <div className="mt-0.5 flex items-center gap-2 text-muted">
+              {contact.email && (
+                <a
+                  href={`mailto:${contact.email}`}
+                  title={contact.email}
+                  className="hover:text-violet"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                </a>
+              )}
+              {contact.phone && (
+                <a
+                  href={`tel:${contact.phone.replace(/\s/g, "")}`}
+                  title={contact.phone}
+                  className="hover:text-violet"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                </a>
+              )}
+              {contact.linkedin && (
+                <a
+                  href={contact.linkedin}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="LinkedIn profile"
+                  className="hover:text-[#0A66C2]"
+                >
+                  <Linkedin className="h-3.5 w-3.5" />
+                </a>
+              )}
+            </div>
           </div>
         ) : enriching ? (
           <span className="text-xs text-muted">FullEnrich running…</span>
