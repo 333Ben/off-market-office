@@ -26,6 +26,7 @@ import {
   draftCompany,
   scoreCompany,
   launchOutreach,
+  buildCadence,
 } from "./pipeline";
 import type { OutreachChannel } from "./types";
 import { rankCandidates } from "./matcher";
@@ -160,6 +161,21 @@ app.post("/api/outreach/launch", async (req, res) => {
   try {
     const result = await launchOutreach(companyIds, channel);
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// Multi-channel cadence — one Claude call plans a 4-touch sequence (§ Track 1).
+app.post("/api/companies/:id/cadence", async (req, res) => {
+  const company = getCompany(req.params.id);
+  if (!company) return res.status(404).json({ error: "not found" });
+  const lang = req.body?.lang === "fr" ? "fr" : "en";
+  const matchId =
+    typeof req.body?.matchId === "string" ? req.body.matchId : undefined;
+  try {
+    const cadence = await buildCadence(company, matchId, lang);
+    res.json(cadence);
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }

@@ -3,14 +3,14 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import type { Company, Db, Match, OutreachDraft } from "./types";
+import type { Cadence, Company, Db, Match, OutreachDraft } from "./types";
 import { buildSeed } from "./seed";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "data");
 const DB_PATH = join(DATA_DIR, "db.json");
 
-let db: Db = { companies: [], matches: [], drafts: [] };
+let db: Db = { companies: [], matches: [], drafts: [], cadences: [] };
 
 function persist() {
   mkdirSync(DATA_DIR, { recursive: true });
@@ -21,9 +21,10 @@ function persist() {
 export function loadDb(): void {
   if (existsSync(DB_PATH)) {
     db = JSON.parse(readFileSync(DB_PATH, "utf-8")) as Db;
+    if (!db.cadences) db.cadences = []; // tolerate db.json from before cadences
     console.log(`Loaded ${db.companies.length} companies from db.json`);
   } else {
-    db = { companies: buildSeed(), matches: [], drafts: [] };
+    db = { companies: buildSeed(), matches: [], drafts: [], cadences: [] };
     persist();
     console.log(`Seeded ${db.companies.length} companies → db.json`);
   }
@@ -31,7 +32,7 @@ export function loadDb(): void {
 
 /** Re-seed from scratch (demo safety — POST /api/simulate/reset). */
 export function resetDb(): void {
-  db = { companies: buildSeed(), matches: [], drafts: [] };
+  db = { companies: buildSeed(), matches: [], drafts: [], cadences: [] };
   persist();
 }
 
@@ -113,4 +114,14 @@ export function addDraft(draft: OutreachDraft): void {
 
 export function getDraftsFor(companyId: string): OutreachDraft[] {
   return db.drafts.filter((d) => d.companyId === companyId);
+}
+
+/** Keep one latest cadence per company (regenerating replaces the old one). */
+export function addCadence(cadence: Cadence): void {
+  db.cadences = db.cadences.filter((c) => c.companyId !== cadence.companyId);
+  db.cadences.push(cadence);
+}
+
+export function getCadenceFor(companyId: string): Cadence | undefined {
+  return db.cadences.find((c) => c.companyId === companyId);
 }
