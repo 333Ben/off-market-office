@@ -4,16 +4,19 @@ import { simulateSignal, resetDataset, runAgent } from "./lib/api";
 import TopBar from "./components/TopBar";
 import Sidebar from "./components/Sidebar";
 import MapView from "./components/MapView";
+import TableView from "./components/TableView";
 import DetailPanel from "./components/DetailPanel";
 import AgentConsole from "./components/AgentConsole";
 import IconRail from "./components/IconRail";
 import BodaccFeed from "./components/BodaccFeed";
+import ContactList from "./components/ContactList";
 
 export default function App() {
   const load = useStore((s) => s.load);
   const loading = useStore((s) => s.loading);
   const error = useStore((s) => s.error);
   const companies = useStore((s) => s.companies);
+  const view = useStore((s) => s.view);
   const selectedId = useStore((s) => s.selectedId);
   const selected = useMemo(
     () => findCompany(companies, selectedId),
@@ -61,6 +64,8 @@ export default function App() {
               <div className="grid h-full place-items-center text-sm text-muted">
                 Loading Paris…
               </div>
+            ) : view === "table" ? (
+              <TableView />
             ) : (
               <MapView />
             )}
@@ -78,6 +83,7 @@ export default function App() {
         </div>
       </div>
       <BodaccFeed />
+      <ContactList />
     </div>
   );
 }
