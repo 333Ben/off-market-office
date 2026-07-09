@@ -1,6 +1,13 @@
 // REST + SSE client (§6).
 
-import type { Company, Contact, Match, OutreachDraft } from "../types";
+import type {
+  Company,
+  Contact,
+  Match,
+  OutreachChannel,
+  OutreachDraft,
+  OutreachResult,
+} from "../types";
 
 export interface MatchCandidate {
   companyId: string;
@@ -135,6 +142,19 @@ export async function fetchSillage(): Promise<{
   const res = await fetch("/api/sillage");
   if (!res.ok)
     return { ok: false, enabled: false, accounts: [], signals: [], total: 0 };
+  return res.json();
+}
+
+export async function launchOutreach(
+  companyIds: string[],
+  channel: OutreachChannel
+): Promise<OutreachResult> {
+  const res = await fetch("/api/outreach/launch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ companyIds, channel }),
+  });
+  if (!res.ok) throw new Error(`outreach failed: ${res.status}`);
   return res.json();
 }
 

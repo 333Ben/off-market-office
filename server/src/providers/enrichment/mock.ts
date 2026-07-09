@@ -29,6 +29,7 @@ export class MockEnrichmentProvider implements EnrichmentProvider {
       role,
       email: `${handle}@${slug}.example.fr`,
       phone: `+33 1 00 ${String(10 + (seed % 89)).padStart(2, "0")} ${String(10 + (seed * 2) % 89).padStart(2, "0")} ${String(10 + (seed * 3) % 89).padStart(2, "0")}`,
+      linkedin: `https://www.linkedin.com/in/${handle.replace(".", "-")}-${slug}`,
       enrichmentStatus: "found",
       source: "mock",
     };

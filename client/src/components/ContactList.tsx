@@ -5,6 +5,8 @@ import {
   UserSearch,
   Check,
   Mail,
+  Phone,
+  Linkedin,
   Copy,
   Sparkles,
   Send,
@@ -12,9 +14,11 @@ import {
   FolderOpen,
   Building2,
   ChevronDown,
+  Rocket,
 } from "lucide-react";
 import { useStore } from "../store";
-import { enrichCompany, fetchCompany } from "../lib/api";
+import { enrichCompany, fetchCompany, launchOutreach } from "../lib/api";
+import type { OutreachChannel, OutreachResult } from "../types";
 import { typeColor, heroStat, formatDate } from "../lib/format";
 import AvailableOffices from "./AvailableOffices";
 
@@ -40,6 +44,9 @@ export default function ContactList() {
   const [listName, setListName] = useState("");
   const [showSaved, setShowSaved] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [channel, setChannel] = useState<OutreachChannel>("email");
+  const [launching, setLaunching] = useState(false);
+  const [result, setResult] = useState<OutreachResult | null>(null);
 
   const queued = useMemo(
     () =>
@@ -97,6 +104,37 @@ export default function ContactList() {
     saveList(name);
     setListName("");
     showToast(`Saved “${name}” · ${queued.length} companies`);
+  };
+
+  // Reachable = has any channel to contact on.
+  const reachable = queued.filter(
+    (c) => c.contact?.email || c.contact?.linkedin || c.contact?.phone
+  );
+
+  const launch = async () => {
+    if (reachable.length === 0) return;
+    setLaunching(true);
+    setResult(null);
+    try {
+      const ids = reachable.map((c) => c.id);
+      const r = await launchOutreach(ids, channel);
+      setResult(r);
+      // Refresh statuses so rows reflect "contacted".
+      await Promise.all(
+        ids.map(async (id) => {
+          try {
+            upsertCompany(await fetchCompany(id));
+          } catch {
+            /* ignore */
+          }
+        })
+      );
+      showToast(`Max: ${r.queued} contact(s) queued via ${channel}`);
+    } catch {
+      /* surfaces on the agent console */
+    } finally {
+      setLaunching(false);
+    }
   };
 
   if (!open) return null;
@@ -290,23 +328,55 @@ export default function ContactList() {
                     </div>
 
                     <div className="mt-2.5 border-t border-border pt-2.5">
-                      {contact && contact.email ? (
-                        <div className="flex items-center justify-between gap-2">
+                      {contact &&
+                      (contact.email || contact.linkedin || contact.phone) ? (
+                        <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="truncate text-sm font-500 text-ink">
                               {contact.fullName}{" "}
                               <span className="text-muted">· {contact.role}</span>
                             </div>
-                            <a
-                              href={`mailto:${contact.email}`}
-                              className="flex items-center gap-1 truncate text-xs text-violet hover:text-violet-hover"
-                            >
-                              <Mail className="h-3 w-3 shrink-0" /> {contact.email}
-                            </a>
+                            <div className="mt-1 flex flex-col gap-0.5">
+                              {contact.email && (
+                                <a
+                                  href={`mailto:${contact.email}`}
+                                  className="flex items-center gap-1.5 truncate text-xs text-violet hover:text-violet-hover"
+                                >
+                                  <Mail className="h-3 w-3 shrink-0" />{" "}
+                                  {contact.email}
+                                </a>
+                              )}
+                              {contact.phone && (
+                                <a
+                                  href={`tel:${contact.phone.replace(/\s/g, "")}`}
+                                  className="flex items-center gap-1.5 truncate text-xs text-secondary hover:text-ink"
+                                >
+                                  <Phone className="h-3 w-3 shrink-0" />{" "}
+                                  {contact.phone}
+                                </a>
+                              )}
+                              {contact.linkedin && (
+                                <a
+                                  href={contact.linkedin}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-1.5 truncate text-xs text-[#0A66C2] hover:underline"
+                                >
+                                  <Linkedin className="h-3 w-3 shrink-0" /> LinkedIn
+                                  profile
+                                </a>
+                              )}
+                            </div>
                           </div>
-                          <span className="flex shrink-0 items-center gap-1 text-[11px] font-600 text-success">
-                            <Check className="h-3.5 w-3.5" /> Ready
-                          </span>
+                          {c.status === "contacted" ? (
+                            <span className="flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-600 text-success">
+                              <Rocket className="h-3 w-3" /> Contacted
+                            </span>
+                          ) : (
+                            <span className="flex shrink-0 items-center gap-1 text-[11px] font-600 text-success">
+                              <Check className="h-3.5 w-3.5" /> Ready
+                            </span>
+                          )}
                         </div>
                       ) : loading ? (
                         <span className="text-xs text-muted">
@@ -353,6 +423,59 @@ export default function ContactList() {
             </ul>
           )}
         </div>
+
+        {/* Contact via Max — hand the list to Digital Crew's AI sales agent */}
+        {queued.length > 0 && (
+          <div className="border-t border-border bg-page px-5 py-3">
+            {result && (
+              <div className="mb-2.5 flex items-start gap-2 rounded-card border border-success/30 bg-success/5 px-3 py-2 text-xs text-secondary">
+                <Rocket className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />
+                <span>
+                  <b className="text-ink">Campaign {result.campaignId}</b> —{" "}
+                  {result.queued} queued via {result.channel}
+                  {result.skipped > 0 && `, ${result.skipped} skipped`}.{" "}
+                  <span className="text-muted">
+                    {result.real ? "Sent to Max" : "Mock — set PROVIDERS=max"}
+                  </span>
+                </span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-600 uppercase tracking-wide text-muted">
+                Channel
+              </span>
+              <div className="flex items-center gap-1 rounded-chip bg-card p-0.5">
+                {(["email", "linkedin", "multi"] as OutreachChannel[]).map((ch) => (
+                  <button
+                    key={ch}
+                    onClick={() => setChannel(ch)}
+                    className={`rounded-[7px] px-2.5 py-1 text-xs font-600 capitalize transition ${
+                      channel === ch
+                        ? "bg-violet text-white"
+                        : "text-secondary hover:text-ink"
+                    }`}
+                  >
+                    {ch === "multi" ? "Both" : ch}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={launch}
+              disabled={reachable.length === 0 || launching}
+              className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-card bg-violet px-4 py-2.5 text-sm font-600 text-white hover:bg-violet-hover disabled:opacity-40"
+            >
+              <Rocket className="h-4 w-4" />
+              {launching
+                ? "Launching on Max…"
+                : `Contact via Max · ${reachable.length}`}
+            </button>
+            <p className="mt-1.5 text-center text-[11px] text-muted">
+              Hands the list to Max (Digital Crew AI sales agent) to run the
+              outreach.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

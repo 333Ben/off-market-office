@@ -29,8 +29,24 @@ export interface Contact {
   role: string;
   email?: string;
   phone?: string;
+  linkedin?: string;
   enrichmentStatus: "pending" | "found" | "partial";
   source: "fullenrich" | "mock";
+}
+
+export type OutreachChannel = "email" | "linkedin" | "multi";
+
+// Result of pushing a contact list to Max (Digital Crew's AI sales agent).
+export interface OutreachResult {
+  ok: boolean;
+  provider: "max";
+  real: boolean; // true = real Max MCP call, false = mock
+  campaignId: string;
+  channel: OutreachChannel;
+  queued: number; // contacts actually pushed
+  skipped: number; // queued companies with no reachable contact
+  companyIds: string[];
+  message: string;
 }
 
 export type ReleaseReason =
